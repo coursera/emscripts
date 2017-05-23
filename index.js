@@ -1,6 +1,10 @@
 'use strict';
+
 const request = require('request');
+const moment = require('moment');
+
 const BASE_URL = 'https://coursera.atlassian.net/rest/api/2/';
+
 const stakeholders_field = 'customfield_10700';
 const groups_watch_field = 'customfield_11000';
 const business_verticals_field = 'customfield_12200';
@@ -55,6 +59,30 @@ function groupsThatShouldFollowIssue(issue) {
   }
   return groups;
 }
+function duedate(issue) {
+  const priority = issue.fields.priority && issue.fields.priority.name;
+  let numDaysDue = null;
+  switch (priority) {
+    case 'Minor (P3)':
+      numDaysDue = null;
+      break;
+    case 'Major (P2)':
+      numDaysDue = 30;
+      break;
+    case 'Critical (P1)':
+      numDaysDue = 7;
+      break;
+    case 'Blocker (P0)':
+      numDaysDue = 1;
+      break;
+  }
+  let duedate = null;
+  if (numDaysDue) {
+    duedate = moment().add(numDaysDue, 'days').format('YYYY-MM-DD');
+  }
+  console.log('Duedate: ', duedate);
+  return duedate;
+}
 
 exports.postCreateHook = (event, context, callback) => {
   const jiraData = JSON.parse(event.body);
@@ -66,6 +94,9 @@ exports.postCreateHook = (event, context, callback) => {
   if (jiraData['issue_event_type_name'] === 'issue_created' ||
       jiraData['issue_event_type_name'] === 'issue_updated' ) {
     jiraIssueUpdate.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
-    jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
   }
+  if (jiraData['issue_event_type_name'] == 'issue_created') {
+    jiraIssueUpdate.fields['duedate'] = duedate(issue);
+  }
+  jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
 };
