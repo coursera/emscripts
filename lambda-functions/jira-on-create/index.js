@@ -25,10 +25,7 @@ function jiraRequest(method, path, jsonBody, callback) {
     if (error) {
       console.log(`error occurred for ${method} ${options.url}: `, error);
     } else {
-      console.log(
-        `Response for ${method} ${options.url}:`,
-        response && response.statusCode
-      );
+      console.log(`Response for ${method} ${options.url}:`, response && response.statusCode);
     }
     callback(null, { statusCode: response && response.statusCode, body: body });
   });
@@ -38,9 +35,7 @@ function groupsThatShouldFollowIssue(issue) {
   const stakeHolders = issue.fields[stakeholders_field].map(function(obj) {
     return obj.value;
   });
-  const businessVerticals = issue.fields[business_verticals_field].map(function(
-    obj
-  ) {
+  const businessVerticals = issue.fields[business_verticals_field].map(function(obj) {
     return obj.value;
   });
   const groups = [];
@@ -96,15 +91,8 @@ exports.onCreate = (event, context, callback) => {
 
   const jiraIssueUpdate = { fields: {} };
 
-  if (
-    jiraData['issue_event_type_name'] === 'issue_created' ||
-    jiraData['issue_event_type_name'] === 'issue_updated'
-  ) {
-    jiraIssueUpdate.fields[groups_watch_field] = groupsThatShouldFollowIssue(
-      issue
-    );
-  }
-  if (jiraData['issue_event_type_name'] == 'issue_created') {
+  if (jiraData['issue_event_type_name'] === 'issue_created') {
+    jiraIssueUpdate.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
     jiraIssueUpdate.fields['duedate'] = duedate(issue);
   }
   jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
