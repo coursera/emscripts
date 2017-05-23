@@ -110,21 +110,27 @@ function duedate(issue) {
   return duedate;
 }
 
+function emptyReturn(callback) {
+  console.log('Returning without any OP');
+  callback(null, { statusCode: 200, body: 'Nothing to process' });
+}
+
 exports.onCreate = (event, context, callback) => {
-  console.log('Lambda triggered with event: ', event);
+  console.log('Lambda triggered');
 
   const jiraData = JSON.parse(event.body);
-  const issue = jiraData.issue;
+  const issue = jiraData && jiraData.issue;
+  if (!issue) {
+    return emptyReturn(callback);
+  }
 
-  console.log('issue: ', issue);
-
+  console.log('Issue: ', issue);
   const jiraIssueUpdate = { fields: {} };
-
   if (jiraData['issue_event_type_name'] === 'issue_created') {
     jiraIssueUpdate.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
     jiraIssueUpdate.fields['duedate'] = duedate(issue);
     jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
   } else {
-    callback(null, { statusCode: 200, body: 'Nothing to process' });
+    return emptyReturn(callback);
   }
 };
