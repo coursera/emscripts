@@ -21,6 +21,8 @@ function jiraRequest(method, path, jsonBody, callback) {
     json: jsonBody
   };
 
+  console.log('Username: ', process.env.username);
+
   request(options, function(error, response, body) {
     if (error) {
       console.log(`error occurred for ${method} ${options.url}: `, error);
@@ -31,32 +33,56 @@ function jiraRequest(method, path, jsonBody, callback) {
   });
 }
 
+function getStakeHolders(issue) {
+  const stakeHolderObjs = issue.fields[stakeholders_field] || [];
+  const stakeHolders = stakeHolderObjs.map(function(obj) {
+    return obj.value;
+  }) || [];
+  return stakeHolders;
+}
+
+function getBusinessVerticals(issue) {
+  const businessVerticalObjs = issue.fields[business_verticals_field] || [];
+  const businessVerticals = businessVerticalObjs.map(function(obj) {
+    return obj.value;
+  }) || [];
+  return businessVerticals;
+}
+
 function groupsThatShouldFollowIssue(issue) {
-  const stakeHolders = issue.fields[stakeholders_field].map(function(obj) {
-    return obj.value;
-  });
-  const businessVerticals = issue.fields[business_verticals_field].map(function(obj) {
-    return obj.value;
-  });
+  if (!issue) {
+    return [];
+  }
+
+  const stakeHolders = getStakeHolders(issue);
+  const businessVerticals = getBusinessVerticals(issue);
+
   const groups = [];
-  if (stakeHolders.includes('Learner')) {
-    groups.push({ name: 'LearnerServices' });
+
+  if (stakeHolders.length > 0) {
+    if (stakeHolders.includes('Learner')) {
+      groups.push({ name: 'LearnerServices' });
+    }
+    if (stakeHolders.includes('Enterprise Admins')) {
+      groups.push({ name: 'LearnerOps' });
+    }
+    if (stakeHolders.includes('Lite Agents (outsourced support)')) {
+      groups.push({ name: 'LearnerOps' });
+    }
+    if (stakeHolders.includes('Partner')) {
+      groups.push({ name: 'PartnerOps' });
+    }
   }
-  if (stakeHolders.includes('Enterprise Admins')) {
-    groups.push({ name: 'LearnerOps' });
+
+  if (businessVerticals.length > 0) {
+    if (businessVerticals.includes('Enterprise')) {
+      groups.push({ name: 'enterprise' });
+    }
+    if (businessVerticals.includes('Degrees')) {
+      groups.push({ name: 'DegreeOps' });
+    }
   }
-  if (stakeHolders.includes('Lite Agents (outsourced support)')) {
-    groups.push({ name: 'LearnerOps' });
-  }
-  if (stakeHolders.includes('Partner')) {
-    groups.push({ name: 'PartnerOps' });
-  }
-  if (businessVerticals.includes('Enterprise')) {
-    groups.push({ name: 'enterprise' });
-  }
-  if (businessVerticals.includes('Degrees')) {
-    groups.push({ name: 'DegreeOps' });
-  }
+
   return groups;
 }
 function duedate(issue) {
@@ -85,15 +111,20 @@ function duedate(issue) {
 }
 
 exports.onCreate = (event, context, callback) => {
+  console.log('Lambda triggered with event: ', event);
+
   const jiraData = JSON.parse(event.body);
   const issue = jiraData.issue;
-  console.log('Lambda triggered for issue: ', issue);
+
+  console.log('issue: ', issue);
 
   const jiraIssueUpdate = { fields: {} };
 
   if (jiraData['issue_event_type_name'] === 'issue_created') {
     jiraIssueUpdate.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
     jiraIssueUpdate.fields['duedate'] = duedate(issue);
+    jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
+  } else {
+    callback(null, { statusCode: 200, body: 'Nothing to process' });
   }
-  jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
 };
