@@ -63,7 +63,8 @@ exports.postCreateHook = (event, context, callback) => {
 
   const jiraIssueUpdate = {fields: {}};
 
-  if (jiraData['issue_event_type_name'] === 'issue_created' ) {
+  if (jiraData['issue_event_type_name'] === 'issue_created' ||
+      jiraData['issue_event_type_name'] === 'issue_updated' ) {
     jiraIssueUpdate.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
     jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
   }
