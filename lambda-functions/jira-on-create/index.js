@@ -21,8 +21,6 @@ function jiraRequest(method, path, jsonBody, callback) {
     json: jsonBody
   };
 
-  console.log('Username: ', process.env.username);
-
   request(options, function(error, response, body) {
     if (error) {
       console.log(`error occurred for ${method} ${options.url}: `, error);
