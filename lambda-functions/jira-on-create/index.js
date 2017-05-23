@@ -84,7 +84,7 @@ function duedate(issue) {
   return duedate;
 }
 
-exports.postCreateHook = (event, context, callback) => {
+exports.onCreate = (event, context, callback) => {
   const jiraData = JSON.parse(event.body);
   const issue = jiraData.issue;
   console.log('Lambda triggered for issue: ', issue);
