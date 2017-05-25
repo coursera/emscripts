@@ -10,5 +10,8 @@
   "devDependencies": {},
   "scripts": {},
   "author": "eleith",
-  "license": "Apache 2.0"
+  "license": "Apache 2.0",
+  "scripts": {
+    "zip": "rm jiraOnInactivity.zip; zip -r jiraOnInactivity.zip ."
+  }
 }
