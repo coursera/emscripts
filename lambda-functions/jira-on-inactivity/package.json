@@ -1,0 +1,14 @@
+{
+  "name": "jira-inactivity-bot",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "jira-connector": "^1.11.0",
+    "moment": "^2.18.1"
+  },
+  "devDependencies": {},
+  "scripts": {},
+  "author": "eleith",
+  "license": "Apache 2.0"
+}

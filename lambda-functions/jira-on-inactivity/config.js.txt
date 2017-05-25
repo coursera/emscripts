@@ -1,0 +1,14 @@
+module.exports = {
+  jira: {
+    host: 'host',
+    basic_auth: {
+      username: 'user',
+      password: 'pass',
+    }
+  },
+  inactive: {
+    filter: 'project = _XYZ_ AND status not in (resolved, closed) AND updated < -90d ORDER BY updated ASC',
+    comment: 'labeling issue to identify it as having gone many days without activity',
+    label: 'xyz'
+  }
+};
