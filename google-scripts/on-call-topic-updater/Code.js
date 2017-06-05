@@ -1,4 +1,4 @@
-var REPLACE_STRINGS = [/On Call/ig, /flex/ig, /Context/ig, /on-call/ig, /primary/ig, /secondary/ig, /[^a-zA-z\s]/g];
+var REPLACE_STRINGS = [/On Call/ig, /flex/ig, /Context/ig, /on-call/ig, /primary/ig, /secondary/ig, /[^a-zA-z\s]/g, /Platform Services/ig, /infra/ig];
 var ALL_USERS = null;
 
 var TEAM_FLEX = {
@@ -6,7 +6,7 @@ var TEAM_FLEX = {
   secondaryOncallCalendarId: 'j4bbsbpk4aku5fn6ofr3cp409sfvc3s4@import.calendar.google.com',
   // Thursday; Week starts with Monday with value 1
   // On-call starts on wednesday evening. So full on-call day for FLEX is Thursday
-  firstFullOncallDayIndex: 4,
+  firstFullOncallDayIndex: 4, // Thursday
   slackAlertsChannelId: 'C11U9GLLT',
   oncallSwitcherMethodName: 'switchFlexOncallMain',
   switchesAtHour: 17,
@@ -16,11 +16,31 @@ var TEAM_FLEX = {
 var TEAM_CONTEXT = {
   primaryOncallCalendarId: 'uakha0i23cqedc3q8o62s131ist653od@import.calendar.google.com',
   secondaryOncallCalendarId: '0en7rmqitg595sskc3802klcqc7ddnnk@import.calendar.google.com',
-  firstFullOncallDayIndex: 2, // Monday
+  firstFullOncallDayIndex: 2, // Tuesday
   slackAlertsChannelId: 'C362H438T',
   oncallSwitcherMethodName: 'switchContextOncallMain',
   switchesAtHour: 10,
   switchesOnDay: ScriptApp.WeekDay.MONDAY
+}
+
+var TEAM_DRAGONS = {
+  primaryOncallCalendarId: 'bmm10k717gijteouj8lefpjvlda5894s@import.calendar.google.com',
+  secondaryOncallCalendarId: '4083nalpi5i40abnv555nfq681u3j6at@import.calendar.google.com',
+  firstFullOncallDayIndex: 4, // Thursday
+  slackAlertsChannelId: 'C027TBEQ9',
+  oncallSwitcherMethodName: 'switchDragonsOncallMain',
+  switchesAtHour: 17,
+  switchesOnDay: ScriptApp.WeekDay.WEDNESDAY
+}
+
+var TEAM_PLATFORM_SERVICES = {
+  primaryOncallCalendarId: '64k80ml9brvhn79vcop192q1qurudjds@import.calendar.google.com',
+  secondaryOncallCalendarId: 'jnc8pkmv1u3kf76686sq6bpm060llfsp@import.calendar.google.com',
+  firstFullOncallDayIndex: 4, // Thursday
+  slackAlertsChannelId: 'C0B73KLM7',
+  oncallSwitcherMethodName: 'switchPlatformServicesOncallMain',
+  switchesAtHour: 17,
+  switchesOnDay: ScriptApp.WeekDay.WEDNESDAY
 }
 
 var TEAMS = [TEAM_FLEX, TEAM_CONTEXT];
@@ -85,7 +105,7 @@ function getUserId(name) {
   }
   for(var i = 0; i < ALL_USERS.length; i++){
     var user = ALL_USERS[i];
-    if( user['real_name'] == name ){
+    if(user['real_name'] == name){
       Logger.log(user.id);
       return user.id;
     }
@@ -150,6 +170,14 @@ function switchFlexOncallMain() {
 
 function switchContextOncallMain() {
   switchOncallRoutine(TEAM_CONTEXT);
+}
+
+function switchDragonsOncallMain() {
+  switchOncallRoutine(TEAM_DRAGONS);
+}
+
+function switchPlatformServicesOncallMain() {
+  switchOncallRoutine(TEAM_PLATFORM_SERVICES);
 }
 
 function scheduleOncallUpdaterMain() {
