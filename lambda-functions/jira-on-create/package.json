@@ -1,0 +1,17 @@
+{
+  "name": "jira-on-create-bot",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "request": "^2.81.0",
+    "moment": "^2.18.1"
+  },
+  "devDependencies": {},
+  "scripts": {},
+  "author": "priyankc",
+  "license": "Apache 2.0",
+  "scripts": {
+    "zip": "rm jiraOnCreate.zip; zip -r jiraOnCreate.zip ."
+  }
+}
