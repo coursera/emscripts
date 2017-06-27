@@ -58,7 +58,7 @@ function groupsThatShouldFollowIssue(issue) {
     }
   }
 
-  return groups;
+  return groups.concat(issue.fields[groups_watch_field] || []);
 }
 function duedate(issue) {
   const priority = issue.fields.priority && issue.fields.priority.name;
