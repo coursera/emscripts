@@ -8,7 +8,7 @@ Each lambda function is deployed by uploading the zip bundle to the aws lambda c
 Mac's regular folder compress will not work.
 
 - switch to the directory of the lambda function
-- run the command: `zip -r ../lambda-function.zip *`
+- run the command: `npm run zip`
 - visit aws lambda funciton console, select code and upload the zip
 - Hit save
 - Under the `Actions` dropdown, click `Publish new version`

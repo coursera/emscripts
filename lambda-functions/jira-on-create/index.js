@@ -1,35 +1,12 @@
 'use strict';
 
-const request = require('request');
 const moment = require('moment');
-
-const BASE_URL = 'https://coursera.atlassian.net/rest/api/2/';
+const JiraConnector = require('jira-connector');
+const config = require('./config');
 
 const stakeholders_field = 'customfield_10700';
 const groups_watch_field = 'customfield_11000';
 const business_verticals_field = 'customfield_12200';
-
-function jiraRequest(method, path, jsonBody, callback) {
-  const options = {
-    method: method,
-    url: BASE_URL + path,
-    auth: {
-      user: process.env.username,
-      pass: process.env.password
-    },
-    'content-type': 'application/json',
-    json: jsonBody
-  };
-
-  request(options, function(error, response, body) {
-    if (error) {
-      console.log(`error occurred for ${method} ${options.url}: `, error);
-    } else {
-      console.log(`Response for ${method} ${options.url}:`, response && response.statusCode);
-    }
-    callback(null, { statusCode: response && response.statusCode, body: body });
-  });
-}
 
 function getStakeHolders(issue) {
   const stakeHolderObjs = issue.fields[stakeholders_field] || [];
@@ -115,6 +92,8 @@ function emptyReturn(callback) {
 
 exports.onCreate = (event, context, callback) => {
   console.log('Lambda triggered');
+  const Jira = new JiraConnector(config.jira);
+
 
   const jiraData = JSON.parse(event.body);
   const issue = jiraData && jiraData.issue;
@@ -122,12 +101,25 @@ exports.onCreate = (event, context, callback) => {
     return emptyReturn(callback);
   }
 
+  const issueOptions = {
+    issueKey: issue.key,
+    issue: {
+      fields: {}
+    }
+  }
   console.log('Issue: ', issue);
-  const jiraIssueUpdate = { fields: {} };
+
   if (jiraData['issue_event_type_name'] === 'issue_created') {
-    jiraIssueUpdate.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
-    jiraIssueUpdate.fields['duedate'] = duedate(issue);
-    jiraRequest('PUT', `issue/${issue.key}`, jiraIssueUpdate, callback);
+    issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
+    issueOptions.issue.fields['duedate'] = duedate(issue);
+    Jira.issue.editIssue(issueOptions, (err) => {
+      if (err) {
+        console.log(`Error while update the issue ${issue.key}`, err);
+      } else {
+        console.log(`Successfully updated the issue ${issue.key}:`);
+      }
+      callback(null, {statusCode: 200, body: '' });
+    })
   } else {
     return emptyReturn(callback);
   }

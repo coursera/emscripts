@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "request": "^2.81.0",
+    "jira-connector": "^1.11.0",
     "moment": "^2.18.1"
   },
   "devDependencies": {},
