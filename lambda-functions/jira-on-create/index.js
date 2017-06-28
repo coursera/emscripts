@@ -109,7 +109,8 @@ exports.onCreate = (event, context, callback) => {
   }
   console.log('Issue: ', issue);
 
-  if (jiraData['issue_event_type_name'] === 'issue_created') {
+  if (jiraData['issue_event_type_name'] === 'issue_created' ||
+      jiraData['issue_event_type_name'] === 'issue_updated') {
     issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
     issueOptions.issue.fields['duedate'] = duedate(issue);
     Jira.issue.editIssue(issueOptions, (err) => {
