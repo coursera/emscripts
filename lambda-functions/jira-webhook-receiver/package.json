@@ -1,0 +1,17 @@
+{
+  "name": "jira-webhook-receiver",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "jira-connector": "^1.11.0",
+    "moment": "^2.18.1"
+  },
+  "devDependencies": {},
+  "scripts": {},
+  "author": "priyankc",
+  "license": "Apache 2.0",
+  "scripts": {
+    "zip": "rm jiraWebhookReceiver.zip; zip -r jiraWebhookReceiver.zip ."
+  }
+}

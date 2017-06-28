@@ -1,29 +1,41 @@
-(wip)
 # Lambda Functions
 Each lambda function is organized in a seperate folder
 
-# Deploy
-Each lambda function is deployed by uploading the zip bundle to the aws lambda console. By uploading the zip bundle, nodejs app can depend on any npm package, bundle it in the zip and deploy.
+## Current Deployed Functions
+- jiraOnCreate
+  - This function is triggered on creation of Jira Tickets through Jira's outgoing webhook
+    - Updates the groups watch based on stakeHolders
+    - Updates the due date based on the bug's priority level
+- JiraOnInactivity
+  - This function will go through all the issues that are older than 30 days and adds the snooze label
 
-Mac's regular folder compress will not work.
+# Bundle and Deploy
+Each lambda function is deployed by uploading the zip file to the aws lambda console. By uploading
+the zip file, nodejs app can depend on any npm package.
 
+## Bundle
 - switch to the directory of the lambda function
-- run the command: `zip -r ../lambda-function.zip *`
+- run `npm install`
+- run `npm run zip`
+
+### Deploy using AWS Console
 - visit aws lambda funciton console, select code and upload the zip
 - Hit save
 - Under the `Actions` dropdown, click `Publish new version`
 - Enter optional version name and hit `Publish`
 
+### Deploy using AWS CLI
+- Setup AWS CLI: [CLI Setup Instructions](http://docs.aws.amazon.com/cli/latest/userguide/installing.html)
+  - Setup Credentials in `~/.aws/credentials`
+  - Create config in `~/.aws/config`
+    - config helps with setting default values like region
+- `aws lambda update-function-code --function-name <FUNCTION_NAME> --zip-file fileb://<PATH>  --publish`
+
 # How to create a Lambda Function with NodeJS
-
-If the nodejs app doesn't depend on any packages other than `aws-sdk`, then lambda function can be created with live updating the code.
-
 - create a new folder with the lambda function name
 - create `index.js`
-- export a handler as defined while creating the lambda
-- if the function depends on a package, run the command
-  - `npm install --prefix=<PATH TO LAMBDA FUNCTION DIR>  <PACKAGE NAME>`
-  - this will make sure that npm package is installed in the lambda function directory. when zipped as mentioned in the deploy section, it would include all the dependencies in the bundle
+- create a handler as shown below
+  - ```exports.<HANDLER_NAME> = (event, context, callback) => { }```
 
 # Helpful links
 [AWS lambda documentation](http://docs.aws.amazon.com/lambda/latest/dg/nodejs-prog-model-handler.html)
