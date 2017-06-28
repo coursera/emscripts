@@ -1,4 +1,2 @@
-config.js
-jiraOnInactivity.zip
-jiraOnCreate.zip
+*.zip
 node_modules

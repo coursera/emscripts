@@ -1,5 +1,5 @@
 {
-  "name": "jira-on-create-bot",
+  "name": "jira-webhook-receiver",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -12,6 +12,6 @@
   "author": "priyankc",
   "license": "Apache 2.0",
   "scripts": {
-    "zip": "rm jiraOnCreate.zip; zip -r jiraOnCreate.zip ."
+    "zip": "rm jiraWebhookReceiver.zip; zip -r jiraWebhookReceiver.zip ."
   }
 }
