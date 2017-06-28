@@ -90,7 +90,7 @@ function emptyReturn(callback) {
   callback(null, { statusCode: 200, body: 'Nothing to process' });
 }
 
-exports.onCreate = (event, context, callback) => {
+exports.onReceive = (event, context, callback) => {
   console.log('Lambda triggered');
   const Jira = new JiraConnector(config.jira);
 
