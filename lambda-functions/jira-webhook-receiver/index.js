@@ -1,5 +1,6 @@
 'use strict';
 
+const AWS = require("aws-sdk");
 const moment = require('moment');
 const JiraConnector = require('jira-connector');
 const config = require('./config');
@@ -7,6 +8,20 @@ const config = require('./config');
 const stakeholders_field = 'customfield_10700';
 const groups_watch_field = 'customfield_11000';
 const business_verticals_field = 'customfield_12200';
+
+function sendFlexWakeupCall(issueKey) {
+  var sns = new AWS.SNS();
+  sns.publish({
+    TopicArn: process.env.flexwakeup,
+    Message: `Wake up call from lambda. Jira issue ${issueKey} needs immediate attention`
+  }, function(err, data) {
+    if(err) {
+        console.error('error publishing to SNS');
+    } else {
+        console.info('message published to SNS');
+    }
+  });
+}
 
 function getStakeHolders(issue) {
   const stakeHolderObjs = issue.fields[stakeholders_field] || [];
@@ -111,6 +126,13 @@ exports.onReceive = (event, context, callback) => {
 
   if (jiraData['issue_event_type_name'] === 'issue_created' ||
       jiraData['issue_event_type_name'] === 'issue_updated') {
+
+    const issuePriority = issue.fields.priority && issue.fields.priority.name;
+
+    if (issue.fields.issuetype.name == 'Bug' && issuePriority == 'Blocker (P0)') {
+      sendFlexWakeupCall(issue.key);
+    }
+
     issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
     issueOptions.issue.fields['duedate'] = duedate(issue);
     Jira.issue.editIssue(issueOptions, (err) => {
