@@ -1,3 +1,5 @@
 config.js
-jiraOnInactivity.zip
+jiraInactivity.zip
 node_modules
+package.json.personal
+package.json.github
