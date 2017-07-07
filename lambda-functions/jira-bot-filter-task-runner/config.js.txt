@@ -1,0 +1,26 @@
+module.exports = {
+  jira: {
+    host: 'xyz.atlassian.net',
+    basic_auth: {
+      username: process.env.username,
+      password: process.env.password,
+    },
+  },
+  tasks: [
+    {
+      filter: 'project = xyz AND resolution = unresolved AND updated < -90d ORDER BY updated ASC',
+      action: {
+        comment: 'snoozing this issue since it has been inactive for > 90 days.',
+        labels: ['snoozed'],
+      },
+    },
+    {
+      filter: 'project = xyz AND resolution = unresolved AND issuetype = bug AND duedate < 1d and priority not in ("Critical", "Blocker")',
+      action: {
+        comment: 'this issue is overdue and its priority is being adjusted to critical. if this issue can\'t be fixed by the end of the day, please provide an updated estimate, consider re-assigning or work with the reporter to adjust the due date.',
+        priority: 'Critical',
+        labels: ['overdue-notice'],
+      },
+    },
+  ],
+};

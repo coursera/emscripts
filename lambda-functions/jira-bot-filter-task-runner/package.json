@@ -1,0 +1,24 @@
+{
+  "name": "jira-bot-task-runner",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "jira-connector": "^1.11.0",
+    "moment": "^2.18.1"
+  },
+  "devDependencies": {
+    "eslint": "^4.1.1",
+    "eslint-config-airbnb-base": "^11.2.0"
+  },
+  "author": "eleith",
+  "license": "Apache 2.0",
+  "config": {
+    "function_name": "jira-bot-task-runner",
+    "aws_region": "us-east-2"
+  },
+  "scripts": {
+    "zip": "rm $npm_package_config_function_name.zip; zip -r $npm_package_config_function_name.zip .",
+    "deploy": "aws lambda update-function-code --region $npm_package_config_aws_region --function-name $npm_package_config_function_name --zip-file fileb://$npm_package_config_function_name.zip"
+  }
+}
