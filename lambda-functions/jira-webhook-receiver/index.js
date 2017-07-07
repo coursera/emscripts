@@ -1,6 +1,6 @@
 'use strict';
 
-const AWS = require("aws-sdk");
+const AWS = require('aws-sdk');
 const moment = require('moment');
 const JiraConnector = require('jira-connector');
 const config = require('./config');
@@ -11,16 +11,19 @@ const business_verticals_field = 'customfield_12200';
 
 function sendFlexWakeupCall(issueKey) {
   var sns = new AWS.SNS();
-  sns.publish({
-    TopicArn: process.env.flexwakeup,
-    Message: `Wake up call from lambda. Jira issue ${issueKey} needs immediate attention`
-  }, function(err, data) {
-    if(err) {
+  sns.publish(
+    {
+      TopicArn: process.env.flexwakeup,
+      Message: `Wake up call from lambda. Jira issue ${issueKey} needs immediate attention`
+    },
+    function(err, data) {
+      if (err) {
         console.error('error publishing to SNS');
-    } else {
+      } else {
         console.info('message published to SNS');
+      }
     }
-  });
+  );
 }
 
 function getStakeHolders(issue) {
@@ -105,13 +108,22 @@ function emptyReturn(callback) {
   callback(null, { statusCode: 200, body: 'Nothing to process' });
 }
 
+function allowDueDateUpdate(changelog, webhookEvent) {
+  let allowUpdate = false;
+  const latestChange = changelog.items.pop();
+  if (latestChange.field == 'priority' || webhookEvent == 'issue_created') {
+    console.log('Allow duedate update');
+    allowUpdate = true;
+  }
+  return allowUpdate;
+}
+
 exports.onReceive = (event, context, callback) => {
   console.log('Lambda triggered');
-  const Jira = new JiraConnector(config.jira);
-
-
   const jiraData = JSON.parse(event.body);
+
   const issue = jiraData && jiraData.issue;
+  const changelog = jiraData.changelog;
   if (!issue) {
     return emptyReturn(callback);
   }
@@ -121,12 +133,12 @@ exports.onReceive = (event, context, callback) => {
     issue: {
       fields: {}
     }
-  }
+  };
   console.log('Issue: ', issue);
+  console.log('ChangeLog', changelog);
+  const webhookEvent = jiraData['issue_event_type_name'];
 
-  if (jiraData['issue_event_type_name'] === 'issue_created' ||
-      jiraData['issue_event_type_name'] === 'issue_updated') {
-
+  if (webhookEvent === 'issue_created' || webhookEvent === 'issue_updated') {
     const issuePriority = issue.fields.priority && issue.fields.priority.name;
 
     if (issue.fields.issuetype.name == 'Bug' && issuePriority == 'Blocker (P0)') {
@@ -134,15 +146,20 @@ exports.onReceive = (event, context, callback) => {
     }
 
     issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
-    issueOptions.issue.fields['duedate'] = duedate(issue);
-    Jira.issue.editIssue(issueOptions, (err) => {
+
+    if (allowDueDateUpdate(changelog, webhookEvent)) {
+      issueOptions.issue.fields['duedate'] = duedate(issue);
+    }
+
+    const Jira = new JiraConnector(config.jira);
+    Jira.issue.editIssue(issueOptions, err => {
       if (err) {
         console.log(`Error while update the issue ${issue.key}`, err);
       } else {
         console.log(`Successfully updated the issue ${issue.key}:`);
       }
-      callback(null, {statusCode: 200, body: '' });
-    })
+      callback(null, { statusCode: 200, body: '' });
+    });
   } else {
     return emptyReturn(callback);
   }
