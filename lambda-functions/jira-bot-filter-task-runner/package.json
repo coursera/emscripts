@@ -9,7 +9,8 @@
   },
   "devDependencies": {
     "eslint": "^4.1.1",
-    "eslint-config-airbnb-base": "^11.2.0"
+    "eslint-config-airbnb-base": "^11.2.0",
+    "eslint-plugin-import": "^2.7.0"
   },
   "author": "eleith",
   "license": "Apache 2.0",
