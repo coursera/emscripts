@@ -1,6 +1,8 @@
+const moment = require('moment');
+
 module.exports = {
   jira: {
-    host: 'xyz.atlassian.net',
+    host: 'xzy.atlassian.net',
     basic_auth: {
       username: process.env.username,
       password: process.env.password,
@@ -10,8 +12,8 @@ module.exports = {
     {
       filter: 'project = xyz AND resolution = unresolved AND updated < -90d ORDER BY updated ASC',
       action: {
-        comment: 'snoozing this issue since it has been inactive for > 90 days.',
-        labels: ['snoozed'],
+        comment: 'jira-task-runner is snoozing this issue since it has been inactive for > 90 days. snoozing will cause jira-task-runner\'s cleanup process to take effect in the future if this issue remains inactive. remove the "snoozed" label and prioritize this issue if you want to avoid it from being cleaned up.',
+        labels: ['jira-task-runner', 'snoozed'],
       },
     },
     {
@@ -19,7 +21,47 @@ module.exports = {
       action: {
         comment: 'this issue is overdue and its priority is being adjusted to critical. if this issue can\'t be fixed by the end of the day, please provide an updated estimate, consider re-assigning or work with the reporter to adjust the due date.',
         priority: 'Critical',
-        labels: ['overdue-notice'],
+        labels: ['jira-task-runner', 'jira-task-runner-overdue'],
+      },
+    },
+    {
+      filter: 'project = xyz AND resolution = unresolved AND issuetype = bug AND duedate > 1d and duedate < 7d and priority not in ("Critical", "Blocker")',
+      action: {
+        comment: 'this issue is due in less than a week and its priority is being adjusted to critical.',
+        priority: 'Critical',
+        labels: ['jira-task-runner', 'jira-task-runner-one-week-due'],
+      },
+    },
+    {
+      filter: 'project = xyz AND resolution = unresolved AND issuetype = bug AND duedate > 7d and duedate < 29d and priority not in ("Critical", "Blocker", "Major")',
+      action: {
+        comment: 'this issue is due in less than a month and its priority is now being adjusted to major.',
+        priority: 'Major',
+        labels: ['jira-task-runner', 'jira-task-runner-one-month-due'],
+      },
+    },
+    {
+      filter: 'project = xyz AND resolution = unresolved AND priority = "Major" AND issuetype = bug AND duedate is EMPTY',
+      action: {
+        comment: 'this issue is marked as major but has no due date. a due date of one month has been added.',
+        labels: ['jira-task-runner', 'jira-task-runner-major-without-due-date'],
+        duedate: moment().add(29, 'days').format('YYYY-MM-DD'),
+      },
+    },
+    {
+      filter: 'project = xyz AND resolution = unresolved AND priority = "Critical" AND issuetype = bug AND duedate is EMPTY',
+      action: {
+        comment: 'this issue is marked as critical but has no due date. a due date of one week has been added.',
+        labels: ['jira-task-runner', 'jira-task-runner-critical-without-due-date'],
+        duedate: moment().add(7, 'days').format('YYYY-MM-DD'),
+      },
+    },
+    {
+      filter: 'project = xyz AND resolution = unresolved AND priority = "Blocker" AND issuetype = bug AND duedate is EMPTY',
+      action: {
+        comment: 'this issue is marked as blocker but has no due date. a due date of today has been added.',
+        labels: ['jira-task-runner', 'jira-task-runner-blocker-without-due-date'],
+        duedate: moment().format('YYYY-MM-DD'),
       },
     },
   ],

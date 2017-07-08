@@ -35,37 +35,38 @@ exports.onRun = (event, context, callback) => {
         results.issues.forEach((issue) => {
           const options = {
             issueKey: issue.key,
-            issue: {},
+            issue: {
+              update: {},
+            },
           };
 
           if (task.action.comment) {
-            options.issue.update = options.issue.update || {};
             options.issue.update.comment = [{ add: { body: task.action.comment } }];
           }
 
           if (task.action.priority && issue.fields.priority.name !== task.action.priority) {
-            options.issue.update = options.issue.update || {};
-            options.issue.update.priority = { set: task.action.priority };
+            options.issue.update.priority = [{ set: { name: task.action.priority } }];
           }
 
-          if (task.action.labels) {
-            options.issue.fields = {
-              labels: (issue.fields.labels || []).concat(task.action.labels),
-            };
+          if (task.action.labels && task.action.labels.length) {
+            options.issue.update.labels = [];
+            task.action.labels.forEach((label) => {
+              options.issue.update.labels.push({ add: label });
+            });
           }
 
           if (task.action.duedate) {
-            options.issue.update = options.issue.update || {};
-            options.issue.update.duedate = { set: task.action.duedate };
+            options.issue.update.duedate = [{ set: task.action.duedate }];
           }
 
           const confirmed = { failed: 0, succeeded: 0 };
 
           Jira.issue.editIssue(options, (editErr) => {
-            if (err) {
+            if (editErr) {
               console.error('edit failed: ', options, editErr);
               confirmed.failed += 1;
             } else {
+              console.log(options.issueKey, options.issue);
               confirmed.succeeded += 1;
             }
 
