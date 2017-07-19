@@ -147,7 +147,7 @@ exports.onReceive = (event, context, callback) => {
 
     issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
 
-    if (allowDueDateUpdate(changelog, webhookEvent)) {
+    if (!changelog || allowDueDateUpdate(changelog, webhookEvent)) {
       issueOptions.issue.fields['duedate'] = duedate(issue);
     }
 
