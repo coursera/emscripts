@@ -1,6 +1,7 @@
 const moment = require('moment');
 
 module.exports = {
+  mode: 'dryrun', // When dryrun, outputs log lines. Doesn't issue Jira API calls
   jira: {
     host: 'xzy.atlassian.net',
     basic_auth: {
@@ -8,61 +9,45 @@ module.exports = {
       password: process.env.password,
     },
   },
+  bots: ['xxx', 'yyy'], // Names of the bots
+  transitionIds: {
+    resolve: 5, // TransitionName -> corresponding jira transitionID
+  },
   tasks: [
+    // Array of tasks
+    // Sample Task
     {
-      filter: 'project = xyz AND resolution = unresolved AND updated < -90d ORDER BY updated ASC',
-      action: {
-        comment: 'jira-task-runner is snoozing this issue since it has been inactive for > 90 days. snoozing will cause jira-task-runner\'s cleanup process to take effect in the future if this issue remains inactive. remove the "snoozed" label and prioritize this issue if you want to avoid it from being cleaned up.',
-        labels: ['jira-task-runner', 'snoozed'],
-      },
+      filter: '', // valid jql query
+      conditions: [
+         {
+           type: 'lastHumanActivity', // No human activity since daysSince
+           daysSince: 30
+         },
+         {
+           type: 'lastBotActivity', // No bot activity since daysSince
+           daysSince: 7
+         },
+         {
+           type: 'noRecentCommentTags', // No mentioned commentTags in the most recent comment
+           tags: ['tag1', 'tag2', 'tag3']
+         },
+         {
+           type: 'recentCommentTag', // Most recent comment should have the mentioned tag
+           tag: 'tag4'
+         },
+       ],
+       action: {
+         comment: 'test comment' // adds a comment
+         commentTag: 'testTag' // Appends the provided tag as #commentTag to the comment
+         labels: ['label1', 'label2'], // Adds all the provided labels
+         deleteLabels: ['label3'], // Deletes all the provided labels
+       },
+       transition: {
+         type: 'transition name', // Transition name mentioned in transitionIds provided above
+         comment: 'test comment', // Comment to be added while resolving
+         commentTag: 'resolve', // Comment tag to be added to the provided comment
+         labels: ['label1', 'label2'], // Labels to be added while transitioning
+       }
     },
-    {
-      filter: 'project = xyz AND resolution = unresolved AND issuetype = bug AND duedate < 1d and priority not in ("Critical", "Blocker")',
-      action: {
-        comment: 'this issue is overdue and its priority is being adjusted to critical. if this issue can\'t be fixed by the end of the day, please provide an updated estimate, consider re-assigning or work with the reporter to adjust the due date.',
-        priority: 'Critical',
-        labels: ['jira-task-runner', 'jira-task-runner-overdue'],
-      },
-    },
-    {
-      filter: 'project = xyz AND resolution = unresolved AND issuetype = bug AND duedate > 1d and duedate < 7d and priority not in ("Critical", "Blocker")',
-      action: {
-        comment: 'this issue is due in less than a week and its priority is being adjusted to critical.',
-        priority: 'Critical',
-        labels: ['jira-task-runner', 'jira-task-runner-one-week-due'],
-      },
-    },
-    {
-      filter: 'project = xyz AND resolution = unresolved AND issuetype = bug AND duedate > 7d and duedate < 29d and priority not in ("Critical", "Blocker", "Major")',
-      action: {
-        comment: 'this issue is due in less than a month and its priority is now being adjusted to major.',
-        priority: 'Major',
-        labels: ['jira-task-runner', 'jira-task-runner-one-month-due'],
-      },
-    },
-    {
-      filter: 'project = xyz AND resolution = unresolved AND priority = "Major" AND issuetype = bug AND duedate is EMPTY',
-      action: {
-        comment: 'this issue is marked as major but has no due date. a due date of one month has been added.',
-        labels: ['jira-task-runner', 'jira-task-runner-major-without-due-date'],
-        duedate: moment().add(29, 'days').format('YYYY-MM-DD'),
-      },
-    },
-    {
-      filter: 'project = xyz AND resolution = unresolved AND priority = "Critical" AND issuetype = bug AND duedate is EMPTY',
-      action: {
-        comment: 'this issue is marked as critical but has no due date. a due date of one week has been added.',
-        labels: ['jira-task-runner', 'jira-task-runner-critical-without-due-date'],
-        duedate: moment().add(7, 'days').format('YYYY-MM-DD'),
-      },
-    },
-    {
-      filter: 'project = xyz AND resolution = unresolved AND priority = "Blocker" AND issuetype = bug AND duedate is EMPTY',
-      action: {
-        comment: 'this issue is marked as blocker but has no due date. a due date of today has been added.',
-        labels: ['jira-task-runner', 'jira-task-runner-blocker-without-due-date'],
-        duedate: moment().format('YYYY-MM-DD'),
-      },
-    },
-  ],
+  ]
 };

@@ -2,86 +2,52 @@
 
 const JiraConnector = require('jira-connector');
 const config = require('./config');
+const moment = require('moment');
+const ConditionChecker = require('./condition-checker');
+const IssueActions = require('./issue-actions');
+const IssueTransitions = require('./issue-transitions');
 
+const done = (callback) => {
+  if (config.mode !== 'dryrun') {
+    callback(null, { statusCode: 200, body: '' });
+  }
+};
+
+runTask = Jira => {
+  return task => {
+    Jira.search.search(
+      {
+        jql: task.filter,
+        fields: ['id', 'key', 'comment', 'priority', 'created'],
+        expand: ['changelog'],
+        maxResults: 10000,
+        startAt: 0
+      },
+      (err, results) => {
+        if (err) {
+          console.error('filter failed: %s\n', task.filter, err);
+        } else if (results && results.issues && results.issues.length) {
+          console.log(`Number of issues returned for ${task.filter} = ${results.issues.length}`);
+          const filteredIssues = results.issues.filter(
+            ConditionChecker.checkConditions(task.conditions || [])
+          );
+          filteredIssues.forEach(IssueActions.updateIssue(Jira, task));
+          filteredIssues.forEach(IssueTransitions.transitionIssue(Jira, task.transition));
+        } else {
+          console.log(`No issues were returned for ${task.filter}`);
+        }
+      }
+    );
+  };
+};
 
 exports.onRun = (event, context, callback) => {
   const Jira = new JiraConnector(config.jira);
-  const completed = { failed: 0, success: 0 };
   const tasks = config.tasks;
 
-  const done = () => {
-    if (completed.failed + completed.success === tasks.length) {
-      callback(null, { statusCode: 200, body: JSON.stringify(completed) });
-    }
-  };
-
-  const failed = () => {
-    completed.failed += 1;
-    done();
-  };
-
-  const succeeded = () => {
-    completed.success += 1;
-    done();
-  };
-
-  tasks.forEach((task) => {
-    Jira.search.search({ jql: task.filter }, (err, results) => {
-      if (err) {
-        console.error('filter failed: %s\n', task.filter, err);
-        failed();
-      } else if (results && results.issues && results.issues.length) {
-        console.log(task.filter, results.issues.length);
-        results.issues.forEach((issue) => {
-          const options = {
-            issueKey: issue.key,
-            issue: {
-              update: {},
-            },
-          };
-
-          if (task.action.comment) {
-            options.issue.update.comment = [{ add: { body: task.action.comment } }];
-          }
-
-          if (task.action.priority && issue.fields.priority.name !== task.action.priority) {
-            options.issue.update.priority = [{ set: { name: task.action.priority } }];
-          }
-
-          if (task.action.labels && task.action.labels.length) {
-            options.issue.update.labels = [];
-            task.action.labels.forEach((label) => {
-              options.issue.update.labels.push({ add: label });
-            });
-          }
-
-          if (task.action.duedate) {
-            options.issue.update.duedate = [{ set: task.action.duedate }];
-          }
-
-          const confirmed = { failed: 0, succeeded: 0 };
-
-          Jira.issue.editIssue(options, (editErr) => {
-            if (editErr) {
-              console.error('edit failed: ', options, editErr);
-              confirmed.failed += 1;
-            } else {
-              console.log(options.issueKey, options.issue);
-              confirmed.succeeded += 1;
-            }
-
-            if (confirmed.failed + confirmed.succeeded === results.total) {
-              succeeded();
-            }
-          });
-        });
-      } else {
-        succeeded();
-      }
-    });
-  });
+  tasks.forEach(runTask(Jira));
+  if (require.main === module) {
+    exports.onRun({}, {}, console.log);
+  }
+  done(callback);
 };
-
-if (require.main === module) {
-  exports.onRun({}, {}, console.log);
-}
