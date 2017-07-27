@@ -10,7 +10,6 @@ module.exports = {
   },
   tasks: [
     {
-      filter: 'project = xyz AND resolution = unresolved AND updated < -90d ORDER BY updated ASC',
       action: {
         comment: 'jira-task-runner is snoozing this issue since it has been inactive for > 90 days. snoozing will cause jira-task-runner\'s cleanup process to take effect in the future if this issue remains inactive. remove the "snoozed" label and prioritize this issue if you want to avoid it from being cleaned up.',
         labels: ['jira-task-runner', 'snoozed'],
