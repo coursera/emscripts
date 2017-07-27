@@ -35,7 +35,7 @@ runTask = Jira => {
   };
 };
 
-(event, context, callback) => {
+exports.onRun = (event, context, callback) => {
   const Jira = new JiraConnector(config.jira);
   const tasks = config.tasks;
 
