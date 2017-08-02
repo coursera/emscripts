@@ -16,8 +16,6 @@ lastHumanActivityDate = issue => {
     return activityDate > recentDate ? activityDate : recentDate;
   }, moment(issue.fields.created));
 
-  console.log(`Most recent human activity date for ${issue.key} is ${mostRecentHumanActivityDate}`);
-
   return mostRecentHumanActivityDate;
 };
 
