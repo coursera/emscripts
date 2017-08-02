@@ -1,6 +1,7 @@
 const moment = require('moment');
 
 module.exports = {
+  mode: 'dryrun',
   jira: {
     host: 'xzy.atlassian.net',
     basic_auth: {
@@ -8,13 +9,45 @@ module.exports = {
       password: process.env.password,
     },
   },
+  bots: ['xxx', 'yyy'],
+  transitionIds: {
+    resolve: 5,
+    close: 701
+  },
   tasks: [
     {
+      filter: 'project = xyz AND resolution = unresolved AND updated < -90d ORDER BY updated ASC',
       action: {
         comment: 'jira-task-runner is snoozing this issue since it has been inactive for > 90 days. snoozing will cause jira-task-runner\'s cleanup process to take effect in the future if this issue remains inactive. remove the "snoozed" label and prioritize this issue if you want to avoid it from being cleaned up.',
         labels: ['jira-task-runner', 'snoozed'],
       },
     },
+    {
+      filter: 'project = xyz AND labels = snoozed and resolution is null AND duedate < 17d order by updated asc',
+      action: {
+        comment: 'This issue is due in less than 17 days.  I have unsnoozed it for your consideration.',
+        commentTag: 'unsnooze',
+        deleteLabels: ['snoozed'],
+      },
+    },
+    {
+       filter: 'project = xyz AND labels = snoozed and resolution is null order by updated asc',
+       conditions: [
+         {
+           type: 'lastHumanActivity',
+           daysSince: 90
+         },
+         {
+           type: 'recentCommentTag',
+           tag: '#30_day_poke'
+         }
+       ],
+       action: {
+         comment: 'I feel like we don\'t talk any more.  This issue has not been touched in at least 90 days.  If it remains untouched for another 7 days, I will resolve it as *Won\'t Fix*, and that will be that.\n\n\nPlease consider:\n# Resolving this issue.\n# Updating this issue with any new information.\n# Working with stakeholders to prioritize this issue.\n# Reassigning this issue.',
+         commentTag: 'resolve_warn',
+         labels: ['jira-bot'],
+       },
+     },
     {
       filter: 'project = xyz AND resolution = unresolved AND issuetype = bug AND duedate < 1d and priority not in ("Critical", "Blocker")',
       action: {

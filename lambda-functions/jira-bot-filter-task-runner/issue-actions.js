@@ -1,5 +1,6 @@
+const config = require('./config');
+
 applyActions = (task, options) => {
-  console.dir(task);
   if (task.action.comment) {
     let body = task.action.comment;
     if (task.action.commentTag) {
@@ -16,6 +17,12 @@ applyActions = (task, options) => {
     options.issue.update.labels = [];
     task.action.labels.forEach(label => {
       options.issue.update.labels.push({ add: label });
+    });
+  }
+
+  if (task.action.deleteLabels) {
+    task.action.deleteLabels.forEach(deleteLabel => {
+      options.issue.update.labels.push({ remove: deleteLabel });
     });
   }
 
@@ -38,13 +45,16 @@ exports.updateIssue = (Jira, task) => {
     };
 
     const editOptions = applyActions(task, options);
-
-    Jira.issue.editIssue(editOptions, editErr => {
-      if (editErr) {
-        console.error('edit failed: ', editOptions, editErr);
-      } else {
-        console.log(editOptions.issueKey, editOptions.issue);
-      }
-    });
+    if (config.mode === 'dryrun') {
+      console.log('Dry run enabled. Options issue will be udpated with: ', editOptions);
+    } else {
+      Jira.issue.editIssue(editOptions, editErr => {
+        if (editErr) {
+          console.error('edit failed: ', editOptions, editErr);
+        } else {
+          console.log(editOptions.issueKey, editOptions.issue);
+        }
+      });
+    }
   };
 };

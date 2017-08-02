@@ -29,15 +29,13 @@ checkCondition = (condition, issue) => {
       conditionStatus = daysSinceLastHumanActivity >= condition.daysSince;
       break;
     case 'recentCommentTag':
-      const allComments = (issue.fields.comment && issue.fields.comment.comments) || [];
+      const allComments = issue.fields.comment.comments;
       if (allComments.length > 0) {
         conditionStatus = allComments[allComments.length - 1].body.indexOf(condition.tag) != -1;
       }
       break;
-    case 'resolution':
-      const daysSinceResolution = moment().diff(issue.fields.resolutionDate, 'days');
-      conditionStatus = daysSinceResolution >= condition.daysSince;
-      break;
+    default:
+      console.error(`Invalid condition type used: ${condition.type}`);
   }
   return conditionStatus;
 };

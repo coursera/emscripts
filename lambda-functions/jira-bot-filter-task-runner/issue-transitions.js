@@ -45,12 +45,16 @@ exports.transitionIssue = (Jira, transition) => {
       return;
     }
     const options = applyTransition(issue, transition);
-    Jira.issue.transitionIssue(options, transitionErr => {
-      if (transitionErr) {
-        console.error('transition failed: ', options, transitionErr);
-      } else {
-        console.log(options.issueKey, options.transition);
-      }
-    });
+    if (config.mode === 'dryrun') {
+      console.log('Dry run enabled. Options issue will be transitioned with: ', options);
+    }  else {
+      Jira.issue.transitionIssue(options, transitionErr => {
+        if (transitionErr) {
+          console.error('transition failed: ', options, transitionErr);
+        } else {
+          console.log(options.issueKey, options.transition);
+        }
+      });
+    }
   };
 };

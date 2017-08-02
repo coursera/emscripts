@@ -8,7 +8,9 @@ const IssueActions = require('./issue-actions');
 const IssueTransitions = require('./issue-transitions');
 
 const done = () => {
-  callback(null, { statusCode: 200, body: JSON.stringify(completed) });
+  if (config.mode !== 'dryrun') {
+    callback(null, { statusCode: 200, body: JSON.stringify(completed) });
+  }
 };
 
 runTask = Jira => {
@@ -40,7 +42,6 @@ exports.onRun = (event, context, callback) => {
   const tasks = config.tasks;
 
   tasks.forEach(runTask(Jira));
-
   if (require.main === module) {
     exports.onRun({}, {}, console.log);
   }
