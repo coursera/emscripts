@@ -25,11 +25,14 @@ runTask = Jira => {
         if (err) {
           console.error('filter failed: %s\n', task.filter, err);
         } else if (results && results.issues && results.issues.length) {
+          console.log(`Number of issues returned for ${task.filter} = ${results.issues.length}`);
           const filteredIssues = results.issues.filter(
             ConditionChecker.checkConditions(task.conditions || [])
           );
           filteredIssues.forEach(IssueActions.updateIssue(Jira, task));
           filteredIssues.forEach(IssueTransitions.transitionIssue(Jira, task.transition));
+        } else {
+          console.log(`No issues were returned for ${task.filter}`);
         }
         done();
       }
