@@ -19,19 +19,54 @@ lastHumanActivityDate = issue => {
   return mostRecentHumanActivityDate;
 };
 
+lastBotCommentDate = issue => {
+  const botComments = issue.fields.comment.comments.filter(comment => {
+    return config.bots.indexOf(comment.author.key) !== -1;
+  });
+  let mostRecentBotCommentDate = null;
+  if (botComments.length > 0) {
+    mostRecentBotCommentDate = botComments.reduceRight((recentDate, comment) => {
+      const botCommentDate = moment(comment.created);
+      return botCommentDate > recentDate ? botCommentDate : recentDate;
+    }, moment(issue.fields.created));
+  }
+
+  return mostRecentBotCommentDate;
+}
+
 checkCondition = (condition, issue) => {
   let conditionStatus = false;
+  const allComments = issue.fields.comment.comments;
+  const lastComment = allComments[allComments.length - 1];
   switch (condition.type) {
     case 'lastHumanActivity':
       const daysSinceLastHumanActivity = moment().diff(lastHumanActivityDate(issue), 'days');
       conditionStatus = daysSinceLastHumanActivity >= condition.daysSince;
       break;
     case 'recentCommentTag':
-      const allComments = issue.fields.comment.comments;
       if (allComments.length > 0) {
-        conditionStatus = allComments[allComments.length - 1].body.indexOf(condition.tag) != -1;
+        conditionStatus = lastComment.body.indexOf(`#${condition.tag}`) != -1;
       }
       break;
+    case 'noRecentCommentTags':
+      if (allComments.length > 0) {
+        conditionStatus = condition.tags.reduce((aggregatedResult, tag) => {
+          return aggregatedResult && (lastComment.body.indexOf(`#${tag}`) === -1)
+        }, true);
+      } else {
+        conditionStatus = true;
+      }
+      break;
+    case 'lastBotActivity':
+      const mostRecentBotCommentDate = lastBotCommentDate(issue);
+      if (mostRecentBotCommentDate) {
+        const daysSinceLastBotActivity = moment().diff(mostRecentBotCommentDate, 'days');
+        conditionStatus = daysSinceLastBotActivity >= condition.daysSince;
+      } else {
+        conditionStatus = true;
+      }
+      break;
+
     default:
       console.error(`Invalid condition type used: ${condition.type}`);
   }

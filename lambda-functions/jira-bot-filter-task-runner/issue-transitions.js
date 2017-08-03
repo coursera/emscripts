@@ -52,7 +52,7 @@ exports.transitionIssue = (Jira, transition) => {
         if (transitionErr) {
           console.error('transition failed: ', options, transitionErr);
         } else {
-          console.log(options.issueKey, options.transition);
+          console.log('transitioned the issue', options.issueKey, options.transition);
         }
       });
     }

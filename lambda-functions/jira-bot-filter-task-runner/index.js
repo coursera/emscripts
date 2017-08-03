@@ -7,9 +7,9 @@ const ConditionChecker = require('./condition-checker');
 const IssueActions = require('./issue-actions');
 const IssueTransitions = require('./issue-transitions');
 
-const done = () => {
+const done = (callback) => {
   if (config.mode !== 'dryrun') {
-    callback(null, { statusCode: 200, body: JSON.stringify(completed) });
+    callback(null, { statusCode: 200, body: '' });
   }
 };
 
@@ -19,7 +19,9 @@ runTask = Jira => {
       {
         jql: task.filter,
         fields: ['id', 'key', 'comment', 'priority', 'created'],
-        expand: ['changelog']
+        expand: ['changelog'],
+        maxResults: 10000,
+        startAt: 0
       },
       (err, results) => {
         if (err) {
@@ -34,7 +36,6 @@ runTask = Jira => {
         } else {
           console.log(`No issues were returned for ${task.filter}`);
         }
-        done();
       }
     );
   };
@@ -48,4 +49,5 @@ exports.onRun = (event, context, callback) => {
   if (require.main === module) {
     exports.onRun({}, {}, console.log);
   }
+  done(callback);
 };

@@ -46,13 +46,13 @@ exports.updateIssue = (Jira, task) => {
 
     const editOptions = applyActions(task, options);
     if (config.mode === 'dryrun') {
-      console.log('Dry run enabled. Options issue will be udpated with: ', editOptions);
+      console.log('Dry run enabled. Options issue will be udpated with: ', editOptions.issueKey, editOptions.issue.update.comment);
     } else {
       Jira.issue.editIssue(editOptions, editErr => {
         if (editErr) {
           console.error('edit failed: ', editOptions, editErr);
         } else {
-          console.log(editOptions.issueKey, editOptions.issue);
+          console.log('updated the issue', editOptions.issueKey, editOptions.issue);
         }
       });
     }
