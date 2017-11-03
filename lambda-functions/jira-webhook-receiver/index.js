@@ -149,8 +149,8 @@ const editIssue = (issue) => {
       issueOptions.issue.fields['duedate'] = duedate(issue);
     }
 
-    if (/flex/i.test(issue.project.key) && (!issue.fields.components || issue.fields.components.length === 0)) {
-      issueOptions.issue.fields.components = [{name: 'not-sure'}];
+    if (config.rules.emptyComponentProjectExpression.test(issue.project.key) && (!issue.fields.components || issue.fields.components.length === 0)) {
+      issueOptions.issue.fields.components = [{name: config.rules.emptyComponentName}];
     }
 
     Jira.issue.editIssue(issueOptions, err => {

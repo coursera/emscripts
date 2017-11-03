@@ -14,5 +14,7 @@ module.exports = {
   rules: {
     resolutionExpression: /fixed|done/i,
     resolutionChannel: '#jira-resolution'
+    emptyComponentProjectExpression: /project5/i,
+    emptyComponentName: 'no-component',
   }
 };
