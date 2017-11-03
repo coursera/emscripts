@@ -3,12 +3,13 @@
 const moment = require('moment');
 const JiraConnector = require('jira-connector');
 const config = require('./config');
+const slackUtils = require('./slack-utils');
 
 const stakeholders_field = 'customfield_10700';
 const groups_watch_field = 'customfield_11000';
 const business_verticals_field = 'customfield_12200';
 
-function getStakeHolders(issue) {
+const getStakeHolders = (issue) => {
   const stakeHolderObjs = issue.fields[stakeholders_field] || [];
   const stakeHolders = stakeHolderObjs.map(function(obj) {
     return obj.value;
@@ -16,7 +17,7 @@ function getStakeHolders(issue) {
   return stakeHolders;
 }
 
-function getBusinessVerticals(issue) {
+const getBusinessVerticals = (issue) => {
   const businessVerticalObjs = issue.fields[business_verticals_field] || [];
   const businessVerticals = businessVerticalObjs.map(function(obj) {
     return obj.value;
@@ -24,7 +25,7 @@ function getBusinessVerticals(issue) {
   return businessVerticals;
 }
 
-function groupsThatShouldFollowIssue(issue) {
+const groupsThatShouldFollowIssue = (issue) => {
   if (!issue) {
     return [];
   }
@@ -60,7 +61,8 @@ function groupsThatShouldFollowIssue(issue) {
 
   return groups.concat(issue.fields[groups_watch_field] || []);
 }
-function duedate(issue) {
+
+const duedate = (issue) => {
   const priority = issue.fields.priority && issue.fields.priority.name;
   let numDaysDue = null;
   switch (priority) {
@@ -85,12 +87,12 @@ function duedate(issue) {
   return duedate;
 }
 
-function emptyReturn(callback) {
+const emptyReturn = (callback) => {
   console.log('Returning without any OP');
   callback(null, { statusCode: 200, body: 'Nothing to process' });
 }
 
-function allowDueDateUpdate(changelog, webhookEvent) {
+const allowDueDateUpdate = (changelog, webhookEvent) => {
   let allowUpdate = false;
   const latestChange = changelog.items.pop();
   if (latestChange.field == 'priority' || webhookEvent == 'issue_created') {
@@ -100,28 +102,46 @@ function allowDueDateUpdate(changelog, webhookEvent) {
   return allowUpdate;
 }
 
-exports.onReceive = (event, context, callback) => {
-  console.log('Lambda triggered');
-  const jiraData = JSON.parse(event.body);
+const slackIssue = (issue) => {
+  return new Promise((resolve, reject) => { 
+    if (config.rules.resolutionExpression.test(issue.fields.resolution.name)) {
+      const message = {
+        channel: config.rules.resolutionChannel,
+        text: task.slack.message,
+        options: {
+          reply_broadcast: true,
+          attachments: [slackUtils.jiraIssueToAttachment(issue, config.jira.host)],
+          username: config.slack.bot_name,
+          icon_emoji: `:${config.slack.bot_emoji}:`,
+        }
+      };
 
-  const issue = jiraData && jiraData.issue;
-  const changelog = jiraData.changelog;
-  if (!issue) {
-    return emptyReturn(callback);
-  }
-
-  const issueOptions = {
-    issueKey: issue.key,
-    issue: {
-      fields: {}
+      web.chat.postMessage(message.channel, message.text, message.options, (error, res) => {
+        if (error) {
+          console.log('failed to post slack message: ', error);
+          reject(error);
+        } else {
+          console.log(`posted slack message to ${message.channel}`);
+          resolve();
+        }
+      });
+      //callback(null, { statusCode: 200, body: '' });
+    } else {
+      resolve();
     }
-  };
-  console.log('Issue: ', issue);
-  console.log('ChangeLog', changelog);
-  const webhookEvent = jiraData['issue_event_type_name'];
+  });
+}
 
-  if (webhookEvent === 'issue_created' || webhookEvent === 'issue_updated') {
+const editIssue = (issue) => {
+  return new Promise((resolve, reject) => { 
+    const issueOptions = {
+      issueKey: issue.key,
+      issue: {
+        fields: {}
+      }
+    };
     const issuePriority = issue.fields.priority && issue.fields.priority.name;
+    const Jira = new JiraConnector(config.jira);
 
     issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
 
@@ -129,16 +149,40 @@ exports.onReceive = (event, context, callback) => {
       issueOptions.issue.fields['duedate'] = duedate(issue);
     }
 
-    const Jira = new JiraConnector(config.jira);
+    if (/flex/i.test(issue.project.key) && (!issue.fields.components || issue.fields.components.length === 0)) {
+      issueOptions.issue.fields.components = [{name: 'not-sure'}];
+    }
+
     Jira.issue.editIssue(issueOptions, err => {
       if (err) {
         console.log(`Error while update the issue ${issue.key}`, err);
+        reject(err);
       } else {
         console.log(`Successfully updated the issue ${issue.key}:`);
+        resolve();
       }
-      callback(null, { statusCode: 200, body: '' });
+      //callback(null, { statusCode: 200, body: '' });
     });
+  });
+}
+
+exports.onReceive = (event, context, callback) => {
+  console.log('Lambda triggered');
+  const jiraData = JSON.parse(event.body);
+  const webhookEvent = jiraData['issue_event_type_name'];
+  const issue = jiraData && jiraData.issue;
+  const changelog = jiraData.changelog;
+
+  if (!issue) {
+    return emptyReturn(callback);
+  }
+
+  console.log('Issue: ', issue);
+  console.log('ChangeLog', changelog);
+
+  if (webhookEvent === 'issue_created' || webhookEvent === 'issue_updated') {
+    editIssue(issue).then(slackIssue(issue));
   } else {
     return emptyReturn(callback);
   }
-};
+}
