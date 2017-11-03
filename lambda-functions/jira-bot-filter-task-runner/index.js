@@ -36,7 +36,10 @@ runTask = (Jira, startAt = 0) => {
           filteredIssues.forEach(IssueActions.updateIssue(Jira, task));
           filteredIssues.forEach(IssueTransitions.transitionIssue(Jira, task.transition));
 
-          SlackActions.run(Jira, task, filteredIssues);
+          // don't run slack actions if not needed
+          if (task.slack) {
+            SlackActions.run(Jira, task, filteredIssues);
+          }
 
           if (results.issues && results.total > results.issues.length + startAt) {
             console.log('running filter again to get more results');
