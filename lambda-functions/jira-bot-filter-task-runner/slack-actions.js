@@ -49,7 +49,8 @@ const applySlackActions = (issue, task, users) => {
     };
 
     if (config.mode === 'dryrun') {
-      console.log(`would post slack message to ${channel}`)
+      console.log(`Dry run enabled. Would post slack message to ${channel}`)
+      console.log(issue);
     } else {
       web.chat.postMessage(message.channel, message.text, message.options, (error, res) => {
         if (error) {
