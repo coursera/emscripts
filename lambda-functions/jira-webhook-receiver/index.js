@@ -4,6 +4,8 @@ const moment = require('moment');
 const JiraConnector = require('jira-connector');
 const config = require('./config');
 const slackUtils = require('./slack-utils');
+const WebClient = require('@slack/client').WebClient;
+const web = new WebClient(config.slack.api_token);
 
 const stakeholders_field = 'customfield_10700';
 const groups_watch_field = 'customfield_11000';
@@ -107,7 +109,7 @@ const slackIssue = (issue) => {
     if (config.rules.resolutionExpression.test(issue.fields.resolution.name)) {
       const message = {
         channel: config.rules.resolutionChannel,
-        text: task.slack.message,
+        text: issue.key + ' has just been marked as ' + issue.fields.resolution.name + ' by ' + issue.fields.assignee.name,
         options: {
           reply_broadcast: true,
           attachments: [slackUtils.jiraIssueToAttachment(issue, config.jira.host)],
@@ -125,14 +127,13 @@ const slackIssue = (issue) => {
           resolve();
         }
       });
-      //callback(null, { statusCode: 200, body: '' });
     } else {
       resolve();
     }
   });
 }
 
-const editIssue = (issue) => {
+const editIssue = (issue, changelog) => {
   return new Promise((resolve, reject) => { 
     const issueOptions = {
       issueKey: issue.key,
@@ -140,7 +141,6 @@ const editIssue = (issue) => {
         fields: {}
       }
     };
-    const issuePriority = issue.fields.priority && issue.fields.priority.name;
     const Jira = new JiraConnector(config.jira);
 
     issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
@@ -153,15 +153,19 @@ const editIssue = (issue) => {
       issueOptions.issue.fields.components = [{name: config.rules.emptyComponentName}];
     }
 
-    Jira.issue.editIssue(issueOptions, err => {
-      if (err) {
-        console.log(`Error while update the issue ${issue.key}`, err);
-        reject(err);
-      } else {
-        console.log(`Successfully updated the issue ${issue.key}:`);
-        resolve();
-      }
-    });
+    if (config.mode != 'dryrun') {
+      Jira.issue.editIssue(issueOptions, err => {
+        if (err) {
+          console.log(`Error while update the issue ${issue.key}`, err);
+          reject(err);
+        } else {
+          console.log(`Successfully updated the issue ${issue.key}:`);
+          resolve();
+        }
+      });
+    } else {
+      console.log('dry run enabled. would have edited issue with ', issueOptions);
+    }
   });
 }
 
@@ -180,8 +184,12 @@ exports.onReceive = (event, context, callback) => {
   console.log('ChangeLog', changelog);
 
   if (webhookEvent === 'issue_created' || webhookEvent === 'issue_updated') {
-    editIssue(issue).then(slackIssue(issue)).then(() => callback(null, { statusCode: 200, body: '' }), () => emptyReturn(callback));
+    editIssue(issue, changelog).then(slackIssue(issue)).then(() => callback(null, { statusCode: 200, body: '' }), (error) => { console.log(error); emptyReturn(callback); });
   } else {
     return emptyReturn(callback);
   }
+}
+
+if (require.main === module) {
+  exports.onReceive({body:JSON.stringify({'issue_event_type_name': 'issue_updated', 'issue':{'key': 'flex-200', 'project': {'key':'flex'}, 'fields': {'priority': {name: 'Major'}, 'status': {name: 'Resolved'}, 'resolution': {name:'fixed'}, 'assignee': {name: 'leith'}}}})}, {}, console.log);
 }
