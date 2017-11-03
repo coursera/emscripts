@@ -161,7 +161,6 @@ const editIssue = (issue) => {
         console.log(`Successfully updated the issue ${issue.key}:`);
         resolve();
       }
-      //callback(null, { statusCode: 200, body: '' });
     });
   });
 }
@@ -181,7 +180,7 @@ exports.onReceive = (event, context, callback) => {
   console.log('ChangeLog', changelog);
 
   if (webhookEvent === 'issue_created' || webhookEvent === 'issue_updated') {
-    editIssue(issue).then(slackIssue(issue));
+    editIssue(issue).then(slackIssue(issue)).then(() => callback(null, { statusCode: 200, body: '' }), () => emptyReturn(callback));
   } else {
     return emptyReturn(callback);
   }
