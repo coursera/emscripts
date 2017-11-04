@@ -16,7 +16,7 @@ const SlackUtils = {
         /Critical|Major/.test(issue.fields.priority.name) ? 'danger' : 'warning'
     }
 
-    if (!issues.fields.resolution && moment(moment.now()).isAfter(issue.fields.duedate)) {
+    if (!issue.fields.resolution && moment(moment.now()).isAfter(issue.fields.duedate)) {
       attachment.color = 'danger';
     }
 

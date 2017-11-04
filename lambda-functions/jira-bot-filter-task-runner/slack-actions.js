@@ -88,5 +88,5 @@ const postToSlack = (task, users) => {
 
  
 exports.run = (Jira, task, issues) => {
-  getAllSlackUsers().then(users => issues.forEach(postToSlack(task, users)), console.log);
+  getAllSlackUsers().then(users => issues.forEach(postToSlack(task, users))).catch(console.log);
 }

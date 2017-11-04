@@ -41,7 +41,7 @@ runTask = (Jira, startAt = 0) => {
           filteredIssues.forEach(IssueTransitions.transitionIssue(Jira, task.transition));
 
           // don't run slack actions if not needed
-          if (task.slack) {
+          if (task.slack && filteredIssues && filteredIssues.length) {
             SlackActions.run(Jira, task, filteredIssues);
           }
 
