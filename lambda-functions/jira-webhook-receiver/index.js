@@ -206,5 +206,23 @@ exports.onReceive = (event, context, callback) => {
 }
 
 if (require.main === module) {
-  exports.onReceive({body:JSON.stringify({'issue_event_type_name': 'issue_updated', 'issue':{'key': 'flex-200', 'fields': {'project': {key: 'flex'}, 'priority': {name: 'Major'}, 'status': {name: 'Resolved'}, 'resolution': {name:'fixed'}, 'assignee': {name: 'leith'}}}})}, {}, console.log);
+  const issue = {
+    'key': 'project-200', 
+    'fields': {
+      'project': {key: 'project'}, 
+      'priority': {name: 'Major'}, 
+      'status': {name: 'Resolved'}, 
+      'resolution': {name:'fixed'}, 
+      'assignee': {name: 'leith'}
+    }
+  };
+
+  const changelog = {
+    items: [{
+      'field': 'resolution',
+      'toString': 'fixed',
+    }]
+  }
+
+  exports.onReceive({body:JSON.stringify({'issue_event_type_name': 'issue_updated', 'issue':issue, 'changelog':changelog})}, {}, console.log);
 }
