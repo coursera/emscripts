@@ -104,12 +104,18 @@ const allowDueDateUpdate = (changelog, webhookEvent) => {
   return allowUpdate;
 }
 
-const slackIssue = (issue) => {
+const slackIssue = (issue, changelog, webhookEvent) => {
   return new Promise((resolve, reject) => { 
-    if (config.rules.resolutionExpression.test(issue.fields.resolution.name)) {
+    let resolutionChange;
+
+    if (changelog && changelog.items) {
+      resolutionChange = changelog.items.find(item => item.field === 'resolution');
+    }
+
+    if (resolutionChange && config.rules.resolutionExpression.test(resolutionChange.toString)) {
       const message = {
         channel: config.rules.resolutionChannel,
-        text: issue.key + ' has just been marked as ' + issue.fields.resolution.name + ' by ' + issue.fields.assignee.name,
+        text: 'awesome! ' + issue.fields.assignee.name + ' just marked an issue as ' + issue.fields.resolution.name,
         options: {
           reply_broadcast: true,
           attachments: [slackUtils.jiraIssueToAttachment(issue, config.jira.host)],
@@ -118,22 +124,28 @@ const slackIssue = (issue) => {
         }
       };
 
-      web.chat.postMessage(message.channel, message.text, message.options, (error, res) => {
-        if (error) {
-          console.log('failed to post slack message: ', error);
-          reject(error);
-        } else {
-          console.log(`posted slack message to ${message.channel}`);
-          resolve();
-        }
-      });
+      if (config.mode != 'dryrun') {
+        console.log('posting message to slack ', message);
+        web.chat.postMessage(message.channel, message.text, message.options, (error, res) => {
+          if (error) {
+            console.log('failed to post slack message: ', error);
+            reject(error);
+          } else {
+            console.log(`posted slack message to ${message.channel}`);
+            resolve();
+          }
+        });
+      } else {
+        console.log('dry run enabled. would have posted message to slack ', message);
+        resolve();
+      }
     } else {
       resolve();
     }
   });
 }
 
-const editIssue = (issue, changelog) => {
+const editIssue = (issue, changelog, webhookEvent) => {
   return new Promise((resolve, reject) => { 
     const issueOptions = {
       issueKey: issue.key,
@@ -149,11 +161,12 @@ const editIssue = (issue, changelog) => {
       issueOptions.issue.fields['duedate'] = duedate(issue);
     }
 
-    if (config.rules.emptyComponentProjectExpression.test(issue.project.key) && (!issue.fields.components || issue.fields.components.length === 0)) {
+    if (config.rules.emptyComponentProjectExpression.test(issue.fields.project.key) && (!issue.fields.components || issue.fields.components.length === 0)) {
       issueOptions.issue.fields.components = [{name: config.rules.emptyComponentName}];
     }
 
     if (config.mode != 'dryrun') {
+      console.log('edited issue with ', issueOptions);
       Jira.issue.editIssue(issueOptions, err => {
         if (err) {
           console.log(`Error while update the issue ${issue.key}`, err);
@@ -165,6 +178,7 @@ const editIssue = (issue, changelog) => {
       });
     } else {
       console.log('dry run enabled. would have edited issue with ', issueOptions);
+      resolve();
     }
   });
 }
@@ -182,14 +196,15 @@ exports.onReceive = (event, context, callback) => {
 
   console.log('Issue: ', issue);
   console.log('ChangeLog', changelog);
+  console.log('webhookevent', webhookEvent);
 
-  if (webhookEvent === 'issue_created' || webhookEvent === 'issue_updated') {
-    editIssue(issue, changelog).then(slackIssue(issue)).then(() => callback(null, { statusCode: 200, body: '' }), (error) => { console.log(error); emptyReturn(callback); });
+  if (webhookEvent === 'issue_created' || webhookEvent === 'issue_updated' || webhookEvent === 'issue_resolved') {
+    editIssue(issue, changelog, webhookEvent).then(slackIssue(issue, changelog, webhookEvent)).then(() => callback(null, { statusCode: 200, body: '' }), (error) => { console.log(error); emptyReturn(callback); });
   } else {
     return emptyReturn(callback);
   }
 }
 
 if (require.main === module) {
-  exports.onReceive({body:JSON.stringify({'issue_event_type_name': 'issue_updated', 'issue':{'key': 'flex-200', 'project': {'key':'flex'}, 'fields': {'priority': {name: 'Major'}, 'status': {name: 'Resolved'}, 'resolution': {name:'fixed'}, 'assignee': {name: 'leith'}}}})}, {}, console.log);
+  exports.onReceive({body:JSON.stringify({'issue_event_type_name': 'issue_updated', 'issue':{'key': 'flex-200', 'fields': {'project': {key: 'flex'}, 'priority': {name: 'Major'}, 'status': {name: 'Resolved'}, 'resolution': {name:'fixed'}, 'assignee': {name: 'leith'}}}})}, {}, console.log);
 }
