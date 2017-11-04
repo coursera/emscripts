@@ -1,5 +1,5 @@
 config.js
 *.zip
 node_modules
-package.json.personal
+package.json.live
 package.json.github
