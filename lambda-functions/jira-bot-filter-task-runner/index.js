@@ -20,7 +20,7 @@ runTask = (Jira, startAt = 0) => {
     const jiraOptions = {
         jql: task.filter,
         fields: task.fields || ['id', 'key', 'comment', 'priority', 'created'],
-        maxResults: 100, // max is 100
+        maxResults: 50, // max is 100, but we have a changelog but when doing 100 -> https://jira.atlassian.com/browse/JRACLOUD-67458
         startAt: startAt
     };
 
