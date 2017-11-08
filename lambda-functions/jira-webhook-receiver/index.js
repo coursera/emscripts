@@ -115,7 +115,7 @@ const slackIssue = (issue, changelog, webhookEvent) => {
     if (resolutionChange && config.rules.resolutionExpression.test(resolutionChange.toString)) {
       const message = {
         channel: config.rules.resolutionChannel,
-        text: 'awesome! ' + issue.fields.assignee.name + ' just marked an issue as ' + issue.fields.resolution.name,
+        text: 'awesome! @' + issue.fields.assignee.name + ' just marked an issue as ' + issue.fields.resolution.name,
         options: {
           reply_broadcast: true,
           attachments: [slackUtils.jiraIssueToAttachment(issue, config.jira.host)],
