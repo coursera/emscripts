@@ -153,8 +153,6 @@ const editIssue = (issue, changelog, webhookEvent) => {
         fields: {}
       }
     };
-    const Jira = new JiraConnector(config.jira);
-
     issueOptions.issue.fields[groups_watch_field] = groupsThatShouldFollowIssue(issue);
 
     if (!changelog || allowDueDateUpdate(changelog, webhookEvent)) {
@@ -167,6 +165,7 @@ const editIssue = (issue, changelog, webhookEvent) => {
 
     if (config.mode != 'dryrun') {
       console.log('edited issue with ', issueOptions);
+      const Jira = new JiraConnector(config.jira);
       Jira.issue.editIssue(issueOptions, err => {
         if (err) {
           console.log(`Error while update the issue ${issue.key}`, err);
