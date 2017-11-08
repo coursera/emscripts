@@ -1,0 +1,20 @@
+module.exports = {
+  jira: {
+    host: process.env.host,
+    basic_auth: {
+      username: process.env.username,
+      password: process.env.password,
+    },
+  },
+  slack: {
+    api_token: process.env.slack_api_token,
+    bot_name: 'jira-filter-slack-bot',
+    bot_emoji: ':bear:',
+  },
+  rules: {
+    resolutionExpression: /fixed|done/i,
+    resolutionChannel: '#jira-resolution'
+    emptyComponentProjectExpression: /project5/i,
+    emptyComponentName: 'no-component',
+  }
+};

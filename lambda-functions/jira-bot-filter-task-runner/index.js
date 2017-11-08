@@ -5,6 +5,7 @@ const config = require('./config');
 const moment = require('moment');
 const ConditionChecker = require('./condition-checker');
 const IssueActions = require('./issue-actions');
+const SlackActions = require('./slack-actions');
 const IssueTransitions = require('./issue-transitions');
 
 const done = (callback) => {
@@ -13,26 +14,40 @@ const done = (callback) => {
   }
 };
 
-runTask = Jira => {
+runTask = (Jira, startAt = 0) => {
   return task => {
-    Jira.search.search(
-      {
+
+    const jiraOptions = {
         jql: task.filter,
-        fields: ['id', 'key', 'comment', 'priority', 'created'],
-        expand: ['changelog'],
-        maxResults: 10000,
-        startAt: 0
-      },
-      (err, results) => {
+        fields: task.fields || ['id', 'key', 'comment', 'priority', 'created'],
+        maxResults: 50, // max is 100, but we have a changelog but when doing 100 -> https://jira.atlassian.com/browse/JRACLOUD-67458
+        startAt: startAt
+    };
+
+    if (task.expand) {
+      jiraOptions.expand = task.expand;
+    }
+
+    Jira.search.search(jiraOptions, (err, results) => {
         if (err) {
           console.error('filter failed: %s\n', task.filter, err);
         } else if (results && results.issues && results.issues.length) {
-          console.log(`Number of issues returned for ${task.filter} = ${results.issues.length}`);
+          console.log(`${results.issues.length} issues starting at ${startAt} returned for [ ${task.filter} ]`);
           const filteredIssues = results.issues.filter(
             ConditionChecker.checkConditions(task.conditions || [])
           );
+
           filteredIssues.forEach(IssueActions.updateIssue(Jira, task));
           filteredIssues.forEach(IssueTransitions.transitionIssue(Jira, task.transition));
+
+          // don't run slack actions if not needed
+          if (task.slack && filteredIssues && filteredIssues.length) {
+            SlackActions.run(Jira, task, filteredIssues);
+          }
+
+          if (results.issues && results.total > results.issues.length + startAt) {
+            runTask(Jira, results.issues.length + startAt)(task);
+          }
         } else {
           console.log(`No issues were returned for ${task.filter}`);
         }
@@ -46,8 +61,9 @@ exports.onRun = (event, context, callback) => {
   const tasks = config.tasks;
 
   tasks.forEach(runTask(Jira));
-  if (require.main === module) {
-    exports.onRun({}, {}, console.log);
-  }
   done(callback);
 };
+
+if (require.main === module) {
+  exports.onRun({}, {}, console.log);
+}

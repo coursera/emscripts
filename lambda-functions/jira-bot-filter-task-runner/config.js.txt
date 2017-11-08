@@ -9,6 +9,11 @@ module.exports = {
       password: process.env.password,
     },
   },
+  slack: {
+    api_token: process.env.slack_api_token,
+    bot_name: 'jira-filter-slack-bot',
+    bot_emoji: ':bear:',
+  },
   bots: ['xxx', 'yyy'], // Names of the bots
   transitionIds: {
     resolve: 5, // TransitionName -> corresponding jira transitionID
@@ -18,6 +23,8 @@ module.exports = {
     // Sample Task
     {
       filter: '', // valid jql query
+      expand: [], // list of jira fields to expand
+      fields: [], // list of jira fields to return
       conditions: [
          {
            type: 'lastHumanActivity', // No human activity since daysSince
