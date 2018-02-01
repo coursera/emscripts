@@ -1,4 +1,5 @@
 module.exports = {
+  // mode: 'dryrun',
   jira: {
     host: process.env.host,
     basic_auth: {
@@ -8,13 +9,33 @@ module.exports = {
   },
   slack: {
     api_token: process.env.slack_api_token,
-    bot_name: 'jira-filter-slack-bot',
-    bot_emoji: ':bear:',
   },
-  rules: {
-    resolutionExpression: /fixed|done/i,
-    resolutionChannel: '#jira-resolution'
-    emptyComponentProjectExpression: /project5/i,
-    emptyComponentName: 'no-component',
-  }
+  rules: [
+    // add as many rules as needed
+    {
+      description: 'a rule description for logging',
+      // rules match on conditions in if
+      // conditions can be a string, regex or a function with an issue passed in
+      if: {
+        event: /issue_created|issue_updated/,
+        issue: {
+          components: /componentx/,
+        },
+      },
+      // follow up actions can be to edit the issue or post to slack
+      then: {
+        edit: {
+          // values can be a string or a function with an issue passed in
+          components: [{ name: 'componenty' }],
+        },
+        slack: {
+          // values can be a string or a function with an issue passed in
+          channel: '#jira-rename',
+          message: 'i just renamed a component',
+          bot_name: 'fixie',
+          bot_emoji: 'bike',
+        },
+      },
+    },
+  ],
 };

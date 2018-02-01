@@ -10,7 +10,7 @@
   },
   "devDependencies": {},
   "scripts": {},
-  "author": "priyankc",
+  "author": "priyankc, eleith",
   "license": "Apache 2.0",
   "config": {
     "function_name": "jira-webhook-receiver",
