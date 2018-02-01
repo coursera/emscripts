@@ -108,8 +108,10 @@ const testIssue = (issueTest, issue) => {
           test = test &&
             (testMatch(issueTest[field], issue.fields[field].name, issue) ||
               testMatch(issueTest[field], issue.fields[field].key, issue));
-           console.log(`testing key or name for ${field} with ${issueTest[field]}`);
-           console.log(` and ${issue.fields[field].name} or ${issue.fields[field].key} and ${test} is results`);
+          if (config.mode === 'dryrun') {
+            console.log(`testing key or name for ${field} with ${issueTest[field]}`); // eslint-disable-line no-console
+            console.log(` and ${issue.fields[field].name} or ${issue.fields[field].key} and ${test} is results`); // eslint-disable-line no-console
+          }
         } else {
           // if value is an object we didn't expect, don't flag a match
           test = false;
@@ -130,7 +132,9 @@ const testChangelog = (changelogMatch, changelogValue, issue) => {
     changelogValue.items.forEach((change) => {
       if (changelogMatch[change.field] !== null) {
         test = test && testMatch(changelogMatch[change.field], change.toString, issue);
-        console.log(`testing change of ${change.field} to ${change.toString} against ${changelogMatch[change.field]} is ${test}`);
+        if (config.mode === 'dryrun') {
+          console.log(`testing change of ${change.field} to ${change.toString} against ${changelogMatch[change.field]} is ${test}`); // eslint-disable-line no-console
+        }
       }
     });
   }
