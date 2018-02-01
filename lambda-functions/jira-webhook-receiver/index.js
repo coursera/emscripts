@@ -108,8 +108,8 @@ const testIssue = (issueTest, issue) => {
           test = test &&
             (testMatch(issueTest[field], issue.fields[field].name, issue) ||
               testMatch(issueTest[field], issue.fields[field].key, issue));
-          // console.log(`testing key or name for ${field} with ${issueTest[field]}
-          // and ${issue.fields[field].name} or ${issue.fields[field].key} and ${test} is results`);
+           console.log(`testing key or name for ${field} with ${issueTest[field]}`);
+           console.log(` and ${issue.fields[field].name} or ${issue.fields[field].key} and ${test} is results`);
         } else {
           // if value is an object we didn't expect, don't flag a match
           test = false;
@@ -130,10 +130,10 @@ const testChangelog = (changelogMatch, changelogValue, issue) => {
     changelogValue.items.forEach((change) => {
       if (changelogMatch[change.field] !== null) {
         test = test && testMatch(changelogMatch[change.field], change.toString, issue);
+        console.log(`testing change of ${change.field} to ${change.toString} against ${changelogMatch[change.field]} is ${test}`);
       }
     });
   }
-
   return test;
 };
 
@@ -167,8 +167,8 @@ exports.onReceive = (event, context, callback) => {
       if (test && rule.if.issue) {
         if (webhookEvent === 'issue_created' || webhookEvent === 'issue_moved') {
           test = testIssue(rule.if.issue, issue);
-        } else if (webhookEvent === 'issue_updated') {
-          test = testChangelog(rule.if.issue, changelog, issue);
+        } else {
+          test = testChangelog(rule.if.issue, changelog, issue) && testIssue(rule.if.issue, issue);
         }
       }
     }
@@ -222,15 +222,13 @@ if (require.main === module) {
           components: [],
         },
       },
-      /*
       changelog: {
         items: [{
           field: 'priority',
-          toString: 'Critical',
+          toString: 'Major (P3)',
         }],
       },
-      */
-      type: 'issue_created',
+      type: 'issue_updated',
     },
   ];
 
