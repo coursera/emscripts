@@ -1,4 +1,3 @@
-(wip)
 # Intro
 emscripts is a bucket to organize all tools that would help EMs with their day to day jobs by either automating or enhancing the workflows. These tools could be one-off jobs that could respond to external webhooks or scheduled jobs.
 
@@ -17,6 +16,3 @@ These are scheduled scripts that need tighter integration with Google apps like 
 # Guidelines
 - Each tool is hosted and deployed independently of others
 - No code should be shared across each tool
-- If you have any questions
-  - talk to leith about slack bots
-  - talk to priyank about lambda functions and google scripts
