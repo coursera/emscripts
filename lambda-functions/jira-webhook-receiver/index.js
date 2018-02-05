@@ -15,14 +15,14 @@ const getValueOrNameFromArray = (array) => {
   return values;
 };
 
-const testMatch = (valueTest, value, original) => {
+const testMatch = (valueTest, value, ...extras) => {
   let test = true;
 
   if (valueTest !== null) {
     if (valueTest instanceof RegExp) {
       test = valueTest.test(Array.isArray(value) ? value.join(',') : value);
     } else if (valueTest instanceof Function) {
-      test = valueTest(original || value);
+      test = valueTest(value, ...extras);
     } else {
       test = Array.isArray(value) ? value.some(v => v === valueTest) : valueTest === value;
     }
@@ -31,13 +31,21 @@ const testMatch = (valueTest, value, original) => {
   return test;
 };
 
-const slackIssue = (slack, issue) => new Promise((resolve, reject) => {
+const slackIssue = (slack, issue, changelog) => new Promise((resolve, reject) => {
+  let attachments;
+
+  if (slack.attachments) {
+    attachments = (slack.attachments instanceof Function) ?
+      slack.attachments(issue, changelog) :
+      slack.attachments;
+  }
+
   const message = {
-    channel: (slack.channel instanceof Function) ? slack.channel(issue) : slack.channel,
-    text: (slack.message instanceof Function) ? slack.message(issue) : slack.message,
+    channel: (slack.channel instanceof Function) ? slack.channel(issue, changelog) : slack.channel,
+    text: (slack.message instanceof Function) ? slack.message(issue, changelog) : slack.message,
     options: {
       reply_broadcast: true,
-      attachments: [slackUtils.jiraIssueToAttachment(issue, config.jira.host)],
+      attachments: Array.isArray(attachments) ? attachments : [attachments],
       username: slack.bot_name || config.slack.bot_name,
       icon_emoji: slack.bot_emoji ? `:${slack.bot_emoji}:` : `:${config.slack.bot_emoji}:`,
     },
@@ -94,7 +102,7 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
   }
 });
 
-const testIssue = (issueTest, issue) => {
+const testIssue = (issueTest, issue, changelog) => {
   let test = true;
 
   if (issueTest) {
@@ -103,11 +111,11 @@ const testIssue = (issueTest, issue) => {
       if (value !== null && value !== undefined) {
         if (Array.isArray(value)) {
           const flat = getValueOrNameFromArray(issue.fields[field]);
-          test = test && testMatch(issueTest[field], flat, issue);
+          test = test && testMatch(issueTest[field], flat, issue, changelog);
         } else if (value.key !== null || value.name !== null) {
           test = test &&
-            (testMatch(issueTest[field], issue.fields[field].name, issue) ||
-              testMatch(issueTest[field], issue.fields[field].key, issue));
+            (testMatch(issueTest[field], issue.fields[field].name, issue, changelog) ||
+              testMatch(issueTest[field], issue.fields[field].key, issue, changelog));
           if (config.mode === 'dryrun') {
             console.log(`testing key or name for ${field} with ${issueTest[field]}`); // eslint-disable-line no-console
             console.log(` and ${issue.fields[field].name} or ${issue.fields[field].key} and ${test} is results`); // eslint-disable-line no-console
@@ -131,7 +139,8 @@ const testChangelog = (changelogMatch, changelogValue, issue) => {
   if (changelogValue && changelogValue.items) {
     changelogValue.items.forEach((change) => {
       if (changelogMatch[change.field] !== null) {
-        test = test && testMatch(changelogMatch[change.field], change.toString, issue);
+        test = test &&
+          testMatch(changelogMatch[change.field], change.toString, issue, changelogValue);
         if (config.mode === 'dryrun') {
           console.log(`testing change of ${change.field} to ${change.toString} against ${changelogMatch[change.field]} is ${test}`); // eslint-disable-line no-console
         }
@@ -169,10 +178,11 @@ exports.onReceive = (event, context, callback) => {
       }
 
       if (test && rule.if.issue) {
-        if (webhookEvent === 'issue_created' || webhookEvent === 'issue_moved') {
-          test = testIssue(rule.if.issue, issue);
+        if (changelog && changelog.items && !(/issue_created|issue_moved|issue_reopened/.test(webhookEvent))) {
+          test = testChangelog(rule.if.issue, changelog, issue) &&
+            testIssue(rule.if.issue, issue, changelog);
         } else {
-          test = testChangelog(rule.if.issue, changelog, issue) && testIssue(rule.if.issue, issue);
+          test = testIssue(rule.if.issue, issue);
         }
       }
     }
@@ -183,7 +193,11 @@ exports.onReceive = (event, context, callback) => {
       }
 
       if (rule.then.slack) {
-        followup.slack.push(rule.then.slack);
+        if (Array.isArray(rule.then.slack)) {
+          followup.slack.push(...rule.then.slack);
+        } else {
+          followup.slack.push(rule.then.slack);
+        }
       }
     }
 
@@ -201,7 +215,7 @@ exports.onReceive = (event, context, callback) => {
 
   if (followup.slack.length > 0) {
     followup.slack.forEach((slack) => {
-      promiseChain = promiseChain.then(slackIssue(slack, issue));
+      promiseChain = promiseChain.then(slackIssue(slack, issue, changelog));
     });
   }
 
@@ -215,9 +229,10 @@ if (require.main === module) {
   const jiraHooks = [
     {
       issue: {
+        key: 'PARTNER-1337',
         fields: {
-          project: { key: 'PARTNER', name: 'team tickets' },
-          priority: { name: 'Major (P3)' },
+          project: { key: 'PARTNER' },
+          priority: { name: 'Critical (P3)' },
           // status: { name: 'Resolved' },
           // resolution: { name: 'fixed' },
           assignee: { name: 'clee', key: 'clee' },
@@ -229,7 +244,8 @@ if (require.main === module) {
       changelog: {
         items: [{
           field: 'priority',
-          toString: 'Major (P3)',
+          toString: 'Critical (P3)',
+          fromString: 'Minor (P0)',
         }],
       },
       type: 'issue_updated',
