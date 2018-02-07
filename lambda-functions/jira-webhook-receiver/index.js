@@ -30,18 +30,18 @@ const testRule = (rule, value, ...extras) => {
   return test;
 };
 
-const slackIssue = (slack, issue, changelog) => new Promise((resolve, reject) => {
+const slackIssue = (slack, ...extras) => new Promise((resolve, reject) => {
   let attachments;
 
   if (slack.attachments) {
     attachments = (slack.attachments instanceof Function) ?
-      slack.attachments(issue, changelog) :
+      slack.attachments(...extras) :
       slack.attachments;
   }
 
   const message = {
-    channel: (slack.channel instanceof Function) ? slack.channel(issue, changelog) : slack.channel,
-    text: (slack.message instanceof Function) ? slack.message(issue, changelog) : slack.message,
+    channel: (slack.channel instanceof Function) ? slack.channel(...extras) : slack.channel,
+    text: (slack.message instanceof Function) ? slack.message(...extras) : slack.message,
     options: {
       reply_broadcast: true,
       attachments: Array.isArray(attachments) ? attachments : [attachments],
@@ -101,29 +101,28 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
   }
 });
 
-const filterIssue = (issueTest, issue, changelog) => {
+const filterIssue = (issueTest, issue, changelog, webhook) => {
   let test = true;
 
   if (issueTest) {
     Object.keys(issueTest).forEach((field) => {
       const value = issue.fields[field];
-      if (value !== null && value !== undefined) {
-        if (Array.isArray(value)) {
-          const flat = getValueOrNameFromArray(issue.fields[field]);
-          test = test && testRule(issueTest[field], flat, issue, changelog);
-        } else if (value.key !== null || value.name !== null) {
-          test = test &&
-            (testRule(issueTest[field], issue.fields[field].name, issue, changelog) ||
-              testRule(issueTest[field], issue.fields[field].key, issue, changelog));
-          if (config.mode === 'dryrun') {
-            console.log(`testing key or name for ${field} with ${issueTest[field]}`); // eslint-disable-line no-console
-            console.log(` and ${issue.fields[field].name} or ${issue.fields[field].key} and ${test} is results`); // eslint-disable-line no-console
-          }
-        } else {
-          // if value is an object we didn't expect, don't flag a match
-          test = false;
+
+      if (value === null || value === undefined) {
+        test = test && testRule(issueTest[field], value, issue, changelog, webhook);
+      } else if (Array.isArray(value)) {
+        const flat = getValueOrNameFromArray(value);
+        test = test && testRule(issueTest[field], flat, issue, changelog, webhook);
+      } else if (value && (value.key !== null || value.name !== null)) {
+        test = test &&
+          (testRule(issueTest[field], value.name, issue, changelog, webhook) ||
+            testRule(issueTest[field], value.key, issue, changelog, webhook));
+        if (config.mode === 'dryrun') {
+          console.log(`testing key or name for ${field} with ${issueTest[field]}`); // eslint-disable-line no-console
+          console.log(` and ${value.name} or ${value.key} and ${test} is results`); // eslint-disable-line no-console
         }
       } else {
+        // if value is an object we didn't expect, don't flag a match
         test = false;
       }
     });
@@ -132,14 +131,14 @@ const filterIssue = (issueTest, issue, changelog) => {
   return test;
 };
 
-const filterChangelog = (changelogRule, changelogValue, issue) => {
+const filterChangelog = (changelogRule, changelogValue, issue, webhook) => {
   let test = true;
 
   if (changelogValue && changelogValue.items) {
     changelogValue.items.forEach((change) => {
       if (changelogRule[change.field] !== null) {
         test = test &&
-          testRule(changelogRule[change.field], change.toString, issue, changelogValue);
+          testRule(changelogRule[change.field], change.toString, issue, changelogValue, webhook);
         if (config.mode === 'dryrun') {
           console.log(`testing change of ${change.field} to ${change.toString} against ${changelogRule[change.field]} is ${test}`); // eslint-disable-line no-console
         }
@@ -178,10 +177,10 @@ exports.onReceive = (event, context, callback) => {
 
       if (test && rule.if.issue) {
         if (changelog && changelog.items && !(/issue_created|issue_moved|issue_reopened/.test(webhookEvent))) {
-          test = filterChangelog(rule.if.issue, changelog, issue) &&
-            filterIssue(rule.if.issue, issue, changelog);
+          test = filterChangelog(rule.if.issue, changelog, issue, webhookEvent) &&
+            filterIssue(rule.if.issue, issue, changelog, webhookEvent);
         } else {
-          test = filterIssue(rule.if.issue, issue);
+          test = filterIssue(rule.if.issue, issue, null, webhookEvent);
         }
       }
     }
@@ -214,7 +213,7 @@ exports.onReceive = (event, context, callback) => {
 
   if (followup.slack.length > 0) {
     followup.slack.forEach((slack) => {
-      promiseChain = promiseChain.then(slackIssue(slack, issue, changelog));
+      promiseChain = promiseChain.then(slackIssue(slack, issue, changelog, webhookEvent));
     });
   }
 
@@ -240,14 +239,14 @@ if (require.main === module) {
           components: [],
         },
       },
-      changelog: {
-        items: [{
-          field: 'priority',
-          toString: 'Critical (P3)',
-          fromString: 'Minor (P0)',
-        }],
-      },
-      type: 'issue_updated',
+      // changelog: {
+      //   items: [{
+      //     field: 'priority',
+      //     toString: 'Critical (P3)',
+      //     fromString: 'Minor (P0)',
+      //   }],
+      // },
+      type: 'issue_created',
     },
   ];
 
