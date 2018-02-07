@@ -132,16 +132,16 @@ const filterIssue = (issueTest, issue, changelog) => {
   return test;
 };
 
-const filterChangelog = (changelogMatch, changelogValue, issue) => {
+const filterChangelog = (changelogRule, changelogValue, issue) => {
   let test = true;
 
   if (changelogValue && changelogValue.items) {
     changelogValue.items.forEach((change) => {
-      if (changelogMatch[change.field] !== null) {
+      if (changelogRule[change.field] !== null) {
         test = test &&
-          testRule(changelogMatch[change.field], change.toString, issue, changelogValue);
+          testRule(changelogRule[change.field], change.toString, issue, changelogValue);
         if (config.mode === 'dryrun') {
-          console.log(`testing change of ${change.field} to ${change.toString} against ${changelogMatch[change.field]} is ${test}`); // eslint-disable-line no-console
+          console.log(`testing change of ${change.field} to ${change.toString} against ${changelogRule[change.field]} is ${test}`); // eslint-disable-line no-console
         }
       }
     });
