@@ -1,6 +1,5 @@
 const JiraConnector = require('jira-connector');
 const config = require('./config');
-const slackUtils = require('./slack-utils');
 const { WebClient } = require('@slack/client');
 
 const web = new WebClient(config.slack.api_token);
@@ -15,16 +14,16 @@ const getValueOrNameFromArray = (array) => {
   return values;
 };
 
-const testMatch = (valueTest, value, ...extras) => {
+const testRule = (rule, value, ...extras) => {
   let test = true;
 
-  if (valueTest !== null) {
-    if (valueTest instanceof RegExp) {
-      test = valueTest.test(Array.isArray(value) ? value.join(',') : value);
-    } else if (valueTest instanceof Function) {
-      test = valueTest(value, ...extras);
+  if (rule !== null) {
+    if (rule instanceof RegExp) {
+      test = rule.test(Array.isArray(value) ? value.join(',') : value);
+    } else if (rule instanceof Function) {
+      test = rule(value, ...extras);
     } else {
-      test = Array.isArray(value) ? value.some(v => v === valueTest) : valueTest === value;
+      test = Array.isArray(value) ? value.some(v => v === rule) : rule === value;
     }
   }
 
@@ -102,7 +101,7 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
   }
 });
 
-const testIssue = (issueTest, issue, changelog) => {
+const filterIssue = (issueTest, issue, changelog) => {
   let test = true;
 
   if (issueTest) {
@@ -111,11 +110,11 @@ const testIssue = (issueTest, issue, changelog) => {
       if (value !== null && value !== undefined) {
         if (Array.isArray(value)) {
           const flat = getValueOrNameFromArray(issue.fields[field]);
-          test = test && testMatch(issueTest[field], flat, issue, changelog);
+          test = test && testRule(issueTest[field], flat, issue, changelog);
         } else if (value.key !== null || value.name !== null) {
           test = test &&
-            (testMatch(issueTest[field], issue.fields[field].name, issue, changelog) ||
-              testMatch(issueTest[field], issue.fields[field].key, issue, changelog));
+            (testRule(issueTest[field], issue.fields[field].name, issue, changelog) ||
+              testRule(issueTest[field], issue.fields[field].key, issue, changelog));
           if (config.mode === 'dryrun') {
             console.log(`testing key or name for ${field} with ${issueTest[field]}`); // eslint-disable-line no-console
             console.log(` and ${issue.fields[field].name} or ${issue.fields[field].key} and ${test} is results`); // eslint-disable-line no-console
@@ -133,14 +132,14 @@ const testIssue = (issueTest, issue, changelog) => {
   return test;
 };
 
-const testChangelog = (changelogMatch, changelogValue, issue) => {
+const filterChangelog = (changelogMatch, changelogValue, issue) => {
   let test = true;
 
   if (changelogValue && changelogValue.items) {
     changelogValue.items.forEach((change) => {
       if (changelogMatch[change.field] !== null) {
         test = test &&
-          testMatch(changelogMatch[change.field], change.toString, issue, changelogValue);
+          testRule(changelogMatch[change.field], change.toString, issue, changelogValue);
         if (config.mode === 'dryrun') {
           console.log(`testing change of ${change.field} to ${change.toString} against ${changelogMatch[change.field]} is ${test}`); // eslint-disable-line no-console
         }
@@ -174,15 +173,15 @@ exports.onReceive = (event, context, callback) => {
 
     if (rule.if !== null && rule.if.constructor === Object) {
       if (test && rule.if.event) {
-        test = test && testMatch(rule.if.event, webhookEvent);
+        test = test && testRule(rule.if.event, webhookEvent);
       }
 
       if (test && rule.if.issue) {
         if (changelog && changelog.items && !(/issue_created|issue_moved|issue_reopened/.test(webhookEvent))) {
-          test = testChangelog(rule.if.issue, changelog, issue) &&
-            testIssue(rule.if.issue, issue, changelog);
+          test = filterChangelog(rule.if.issue, changelog, issue) &&
+            filterIssue(rule.if.issue, issue, changelog);
         } else {
-          test = testIssue(rule.if.issue, issue);
+          test = filterIssue(rule.if.issue, issue);
         }
       }
     }

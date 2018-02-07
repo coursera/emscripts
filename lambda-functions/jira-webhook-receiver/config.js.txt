@@ -15,7 +15,7 @@ module.exports = {
     {
       description: 'a rule description for logging',
       // rules match on conditions in if
-      // conditions can be a string, regex or a function with an issue passed in
+      // conditions can be a string, regex or a boolean function with an issue passed in
       if: {
         event: /issue_created|issue_updated/,
         issue: {
