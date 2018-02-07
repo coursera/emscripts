@@ -19,7 +19,7 @@ const testRule = (rule, value, ...extras) => {
 
   if (rule !== null) {
     if (rule instanceof RegExp) {
-      test = rule.test(Array.isArray(value) ? value.join(',') : value);
+      test = rule.test(Array.isArray(value) ? value.join(',') : value || '');
     } else if (rule instanceof Function) {
       test = rule(value, ...extras);
     } else {
@@ -76,10 +76,26 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
   };
 
   Object.keys(edits).forEach((edit) => {
+    let editValue;
+
     if (edits[edit] instanceof Function) {
-      issueOptions.issue.fields[edit] = edits[edit](issue, changelog, webhookEvent);
+      editValue = edits[edit](issue, changelog, webhookEvent);
     } else {
-      issueOptions.issue.fields[edit] = edits[edit];
+      editValue = edits[edit];
+    }
+
+    if (/comment/.test(edit)) {
+      if (!issueOptions.issue.update) {
+        issueOptions.issue.update = {};
+      }
+
+      if (!issueOptions.issue.update.comment) {
+        issueOptions.issue.update.comment = [];
+      }
+
+      issueOptions.issue.update.comment.push({ add: editValue });
+    } else {
+      issueOptions.issue.fields[edit] = editValue;
     }
   });
 
@@ -113,17 +129,20 @@ const filterIssue = (issueTest, issue, changelog, webhook) => {
       } else if (Array.isArray(value)) {
         const flat = getValueOrNameFromArray(value);
         test = test && testRule(issueTest[field], flat, issue, changelog, webhook);
-      } else if (value && (value.key !== null || value.name !== null)) {
-        test = test &&
-          (testRule(issueTest[field], value.name, issue, changelog, webhook) ||
-            testRule(issueTest[field], value.key, issue, changelog, webhook));
-        if (config.mode === 'dryrun') {
-          console.log(`testing key or name for ${field} with ${issueTest[field]}`); // eslint-disable-line no-console
-          console.log(` and ${value.name} or ${value.key} and ${test} is results`); // eslint-disable-line no-console
+      } else if (value && (value.key !== undefined || value.name !== undefined)) {
+        if (value.name !== undefined) {
+          test = test && testRule(issueTest[field], value.name, issue, changelog, webhook);
+        }
+        if (value.key !== undefined) {
+          testRule(issueTest[field], value.key, issue, changelog, webhook);
         }
       } else {
         // if value is an object we didn't expect, don't flag a match
         test = false;
+      }
+
+      if (config.mode === 'dryrun') {
+        console.log(`testing ${field} and result is ${test}`); // eslint-disable-line no-console
       }
     });
   }
@@ -232,7 +251,7 @@ if (require.main === module) {
           project: { key: 'PARTNER' },
           priority: { name: 'Critical (P3)' },
           // status: { name: 'Resolved' },
-          // resolution: { name: 'fixed' },
+          // resolution: { name: 'Fixed' },
           assignee: { name: 'clee', key: 'clee' },
           // duedate: '2018-11-20',
           issuetype: { name: 'Bug' },
