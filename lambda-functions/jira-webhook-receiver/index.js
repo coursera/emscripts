@@ -84,23 +84,39 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
       editValue = edits[edit];
     }
 
-    if (/comment/.test(edit)) {
+    if (/comment|components|labels/.test(edit)) {
       if (!issueOptions.issue.update) {
         issueOptions.issue.update = {};
       }
 
-      if (!issueOptions.issue.update.comment) {
-        issueOptions.issue.update.comment = [];
+      if (!issueOptions.issue.update[edit]) {
+        issueOptions.issue.update[edit] = [];
       }
 
-      issueOptions.issue.update.comment.push({ add: editValue });
+      if (Array.isArray(editValue)) {
+        editValue.forEach((value) => {
+          if (/comment/.test(edit)) {
+            issueOptions.issue.update[edit].push({ add: { body: value } });
+          } else {
+            issueOptions.issue.update[edit].push({ add: { name: value } });
+          }
+        });
+      } else if (typeof editValue === 'string') {
+        if (/comment/.test(edit)) {
+          issueOptions.issue.update[edit].push({ add: { body: editValue } });
+        } else {
+          issueOptions.issue.update[edit].push({ add: { name: editValue } });
+        }
+      } else {
+        issueOptions.issue.update[edit].push({ add: editValue });
+      }
     } else {
       issueOptions.issue.fields[edit] = editValue;
     }
   });
 
   if (config.mode !== 'dryrun') {
-    console.log('edited issue with ', issueOptions); // eslint-disable-line no-console
+    console.log('edited issue with ', issueOptions, { depth: 5 }); // eslint-disable-line no-console
     const Jira = new JiraConnector(config.jira);
     Jira.issue.editIssue(issueOptions, (err) => {
       if (err) {
@@ -134,7 +150,7 @@ const filterIssue = (issueTest, issue, changelog, webhook) => {
           test = test && testRule(issueTest[field], value.name, issue, changelog, webhook);
         }
         if (value.key !== undefined) {
-          testRule(issueTest[field], value.key, issue, changelog, webhook);
+          test = test && testRule(issueTest[field], value.key, issue, changelog, webhook);
         }
       } else {
         // if value is an object we didn't expect, don't flag a match
@@ -152,19 +168,25 @@ const filterIssue = (issueTest, issue, changelog, webhook) => {
 
 const filterChangelog = (changelogRule, changelogValue, issue, webhook) => {
   let test = true;
+  let found = 0;
 
-  if (changelogValue && changelogValue.items) {
+  if (changelogValue && changelogValue.items && changelogValue.items.length) {
     changelogValue.items.forEach((change) => {
-      if (changelogRule[change.field] !== null) {
-        test = test &&
-          testRule(changelogRule[change.field], change.toString, issue, changelogValue, webhook);
+      if (changelogRule[change.field] !== undefined) {
+        const rule = changelogRule[change.field];
+        test = test && testRule(rule, change.toString, issue, changelogValue, webhook);
+        found += 1;
+
         if (config.mode === 'dryrun') {
           console.log(`testing change of ${change.field} to ${change.toString} against ${changelogRule[change.field]} is ${test}`); // eslint-disable-line no-console
         }
       }
     });
+  } else {
+    test = false;
   }
-  return test;
+
+  return found > 0 && test;
 };
 
 exports.onReceive = (event, context, callback) => {
@@ -252,19 +274,26 @@ if (require.main === module) {
           priority: { name: 'Critical (P3)' },
           // status: { name: 'Resolved' },
           // resolution: { name: 'Fixed' },
-          assignee: { name: 'clee', key: 'clee' },
+          assignee: { name: 'tom', key: 'clee' },
           // duedate: '2018-11-20',
           issuetype: { name: 'Bug' },
           components: [],
         },
       },
-      // changelog: {
-      //   items: [{
-      //     field: 'priority',
-      //     toString: 'Critical (P3)',
-      //     fromString: 'Minor (P0)',
-      //   }],
-      // },
+      /*
+      changelog: {
+        items: [{
+          field: 'resolution',
+          fieldtype: 'jira',
+          fieldId: 'resolution',
+          from: null,
+          fromString: null,
+          to: '1',
+          toString: 'Fixed',
+        },
+        ],
+      },
+      */
       type: 'issue_created',
     },
   ];
