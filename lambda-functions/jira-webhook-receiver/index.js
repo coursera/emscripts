@@ -67,6 +67,26 @@ const slackIssue = (slack, ...extras) => new Promise((resolve, reject) => {
   }
 });
 
+const updateIssueField = (issueOptions, field, value) => {
+  /* eslint-disable no-param-reassign */
+  if (!issueOptions.issue.update) {
+    issueOptions.issue.update = {};
+  }
+
+  if (!issueOptions.issue.update[field]) {
+    issueOptions.issue.update[field] = [];
+  }
+
+  if (/comment/.test(field)) {
+    issueOptions.issue.update[field].push({ add: { body: value } });
+  } else if (/component/.test(field)) {
+    issueOptions.issue.update[field].push({ add: { name: value } });
+  } else if (/labels/.test(field)) {
+    issueOptions.issue.update[field].push({ add: value });
+  }
+  /* eslint-enable no-param-reassign */
+};
+
 const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolve, reject) => {
   const issueOptions = {
     issueKey: issue.key,
@@ -85,30 +105,12 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
     }
 
     if (/comment|components|labels/.test(edit)) {
-      if (!issueOptions.issue.update) {
-        issueOptions.issue.update = {};
-      }
-
-      if (!issueOptions.issue.update[edit]) {
-        issueOptions.issue.update[edit] = [];
-      }
-
       if (Array.isArray(editValue)) {
         editValue.forEach((value) => {
-          if (/comment/.test(edit)) {
-            issueOptions.issue.update[edit].push({ add: { body: value } });
-          } else {
-            issueOptions.issue.update[edit].push({ add: { name: value } });
-          }
+          updateIssueField(issueOptions, edit, value);
         });
       } else if (typeof editValue === 'string') {
-        if (/comment/.test(edit)) {
-          issueOptions.issue.update[edit].push({ add: { body: editValue } });
-        } else {
-          issueOptions.issue.update[edit].push({ add: { name: editValue } });
-        }
-      } else {
-        issueOptions.issue.update[edit].push({ add: editValue });
+        updateIssueField(issueOptions, edit, editValue);
       }
     } else {
       issueOptions.issue.fields[edit] = editValue;
@@ -116,11 +118,11 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
   });
 
   if (config.mode !== 'dryrun') {
-    console.log('edited issue with ', issueOptions, { depth: 5 }); // eslint-disable-line no-console
+    console.log('edited issue with: ', JSON.stringify(issueOptions)); // eslint-disable-line no-console
     const Jira = new JiraConnector(config.jira);
     Jira.issue.editIssue(issueOptions, (err) => {
       if (err) {
-        console.log(`Error while update the issue ${issue.key}`, err); // eslint-disable-line no-console
+        console.log(`Error while updating the issue ${issue.key}`, err); // eslint-disable-line no-console
         reject(err);
       } else {
         console.log(`Successfully updated the issue ${issue.key}:`); // eslint-disable-line no-console
@@ -128,7 +130,7 @@ const editIssue = (edits, issue, changelog, webhookEvent) => new Promise((resolv
       }
     });
   } else {
-    console.log('dry run enabled. would have edited issue with %j\n', issueOptions); // eslint-disable-line no-console
+    console.log('dry run enabled. would have edited issue with %j\n', JSON.stringify(issueOptions)); // eslint-disable-line no-console
     resolve();
   }
 });
@@ -146,12 +148,15 @@ const filterIssue = (issueTest, issue, changelog, webhook) => {
         const flat = getValueOrNameFromArray(value);
         test = test && testRule(issueTest[field], flat, issue, changelog, webhook);
       } else if (value && (value.key !== undefined || value.name !== undefined)) {
-        if (value.name !== undefined) {
-          test = test && testRule(issueTest[field], value.name, issue, changelog, webhook);
-        }
+        let testKey;
+        let testName;
         if (value.key !== undefined) {
-          test = test && testRule(issueTest[field], value.key, issue, changelog, webhook);
+          testKey = testRule(issueTest[field], value.key, issue, changelog, webhook);
         }
+        if (value.name !== undefined) {
+          testName = testRule(issueTest[field], value.name, issue, changelog, webhook);
+        }
+        test = test && (testName || testKey);
       } else {
         // if value is an object we didn't expect, don't flag a match
         test = false;
@@ -258,7 +263,7 @@ exports.onReceive = (event, context, callback) => {
     });
   }
 
-  promiseChain.then(() => callback(null, { statusCode: 200, body: 'webhook ran without error' }), (error) => {
+  promiseChain.then(() => callback(null, { statusCode: 200, body: 'webhook ran without error' })).catch((error) => {
     console.error(error); // eslint-disable-line no-console
     callback(null, { statusCode: 200, body: 'webhook had an error' });
   });
@@ -268,32 +273,30 @@ if (require.main === module) {
   const jiraHooks = [
     {
       issue: {
-        key: 'PARTNER-1337',
+        key: 'MOBILE-1337',
         fields: {
-          project: { key: 'PARTNER' },
-          priority: { name: 'Critical (P3)' },
+          project: { key: 'MOBILE', name: 'Mobile' },
+          priority: { name: 'Major (P2)' },
           // status: { name: 'Resolved' },
-          // resolution: { name: 'Fixed' },
-          assignee: { name: 'tom', key: 'clee' },
+          resolution: null,
+          assignee: { name: 'eleith' },
           // duedate: '2018-11-20',
           issuetype: { name: 'Bug' },
           components: [],
         },
       },
-      /*
       changelog: {
         items: [{
-          field: 'resolution',
-          fieldtype: 'jira',
-          fieldId: 'resolution',
-          from: null,
+          field: 'assignee',
           fromString: null,
-          to: '1',
-          toString: 'Fixed',
+          toString: 'eleith',
+        }, {
+          field: 'priority',
+          fromString: null,
+          toString: 'Major',
         },
         ],
       },
-      */
       type: 'issue_created',
     },
   ];
