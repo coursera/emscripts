@@ -214,9 +214,9 @@ exports.onReceive = (event, context, callback) => {
   }
 
   (config.rules || []).forEach((rule) => {
-    let test = true;
-
     if (rule.if !== null && rule.if.constructor === Object) {
+      let test = true;
+
       if (test && rule.if.event) {
         test = test && testRule(rule.if.event, webhookEvent);
       }
@@ -229,26 +229,24 @@ exports.onReceive = (event, context, callback) => {
           test = filterIssue(rule.if.issue, issue, null, webhookEvent);
         }
       }
-    }
 
-    if (test) {
-      if (rule.then.edit) {
-        followup.edit.push(rule.then.edit);
-      }
+      if (test) {
+        console.log(`rule passed for "${rule.description}"\n`); // eslint-disable-line no-console
 
-      if (rule.then.slack) {
-        if (Array.isArray(rule.then.slack)) {
-          followup.slack.push(...rule.then.slack);
-        } else {
-          followup.slack.push(rule.then.slack);
+        if (rule.then.edit) {
+          followup.edit.push(rule.then.edit);
         }
-      }
-    }
 
-    if (test) {
-      console.log(`rule passed for "${rule.description}"\n`); // eslint-disable-line no-console
-    } else if (config.mode === 'dryrun') {
-      console.log(`rule failed for "${rule.description}"\n`); // eslint-disable-line no-console
+        if (rule.then.slack) {
+          if (Array.isArray(rule.then.slack)) {
+            followup.slack.push(...rule.then.slack);
+          } else {
+            followup.slack.push(rule.then.slack);
+          }
+        }
+      } else if (config.mode === 'dryrun') {
+        console.log(`rule failed for "${rule.description}"\n`); // eslint-disable-line no-console
+      }
     }
   });
 
@@ -273,15 +271,15 @@ if (require.main === module) {
   const jiraHooks = [
     {
       issue: {
-        key: 'MOBILE-1337',
+        key: 'PROJECT-1337',
         fields: {
-          project: { key: 'MOBILE', name: 'Mobile' },
-          priority: { name: 'Major (P2)' },
+          project: { key: 'PROJECT', name: 'Project' },
+          priority: { name: 'Major' },
           // status: { name: 'Resolved' },
           resolution: null,
           assignee: { name: 'eleith' },
           // duedate: '2018-11-20',
-          issuetype: { name: 'Bug' },
+          issuetype: { name: 'Epic' },
           components: [],
         },
       },
