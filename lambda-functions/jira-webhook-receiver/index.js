@@ -171,19 +171,20 @@ const filterIssue = (issueTest, issue, changelog, webhook) => {
   return test;
 };
 
-const filterChangelog = (changelogRule, changelogValue, issue, webhook) => {
+const filterChangelog = (rules, fields, value, issue, webhook) => {
   let test = true;
   let found = 0;
 
-  if (changelogValue && changelogValue.items && changelogValue.items.length) {
-    changelogValue.items.forEach((change) => {
-      if (changelogRule[change.field] !== undefined) {
-        const rule = changelogRule[change.field];
-        test = test && testRule(rule, change.toString, issue, changelogValue, webhook);
+  if (value && value.items && value.items.length) {
+    value.items.forEach((change) => {
+      const shouldWatch = fields.some(x => x === change.field);
+      if (rules[change.field] !== undefined && shouldWatch) {
+        const rule = rules[change.field];
+        test = test && testRule(rule, change.toString, issue, value, webhook);
         found += 1;
 
         if (config.mode === 'dryrun') {
-          console.log(`testing change of ${change.field} to ${change.toString} against ${changelogRule[change.field]} is ${test}`); // eslint-disable-line no-console
+          console.log(`testing change of ${change.field} to ${change.toString} against ${rule} is ${test}`); // eslint-disable-line no-console
         }
       }
     });
@@ -223,7 +224,9 @@ exports.onReceive = (event, context, callback) => {
 
       if (test && rule.if.issue) {
         if (changelog && changelog.items && !(/issue_created|issue_moved|issue_reopened/.test(webhookEvent))) {
-          test = filterChangelog(rule.if.issue, changelog, issue, webhookEvent) &&
+          const watch = rule.if.change || Object.keys(rule.if.issue);
+          const fields = Array.isArray(watch) ? watch : [watch];
+          test = filterChangelog(rule.if.issue, fields, changelog, issue, webhookEvent) &&
             filterIssue(rule.if.issue, issue, changelog, webhookEvent);
         } else {
           test = filterIssue(rule.if.issue, issue, null, webhookEvent);
