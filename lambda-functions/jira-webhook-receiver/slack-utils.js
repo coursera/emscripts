@@ -2,6 +2,12 @@ const moment = require('moment');
 
 const SlackUtils = {
 
+  slackUsers: [],
+
+  findSlackUserByEmail: (email) => {
+    return SlackUtils.slackUsers.find(user => user.profile.email === email);
+  },
+
   jiraIssueToAttachment: (issue, host, description, fields) => {
     const attachment = {
       title: issue.fields.summary ? issue.fields.summary : issue.key,

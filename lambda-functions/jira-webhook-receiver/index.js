@@ -1,8 +1,9 @@
 const JiraConnector = require('jira-connector');
 const config = require('./config');
 const { WebClient } = require('@slack/client');
+const slackUtils = require('./slack-utils');
 
-const web = new WebClient(config.slack.api_token);
+const slackWebClient = new WebClient(config.slack.api_token);
 
 const getValueOrNameFromArray = (array) => {
   let values = [];
@@ -52,7 +53,7 @@ const slackIssue = (slack, ...extras) => new Promise((resolve, reject) => {
 
   if (config.mode !== 'dryrun') {
     console.log('posting message to slack ', message); // eslint-disable-line no-console
-    web.chat.postMessage(message.channel, message.text, message.options, (error) => {
+    slackWebClient.chat.postMessage(message.channel, message.text, message.options, (error) => {
       if (error) {
         console.log('failed to post slack message: ', error); // eslint-disable-line no-console
         reject(error);
@@ -255,12 +256,26 @@ exports.onReceive = (event, context, callback) => {
 
   if (followup.edit.length > 0) {
     const edits = followup.edit.reduce((x, y) => Object.assign(x, y));
-    promiseChain = promiseChain.then(editIssue(edits, issue, changelog, webhookEvent));
+    promiseChain = promiseChain.then(() => editIssue(edits, issue, changelog, webhookEvent));
   }
 
   if (followup.slack.length > 0) {
+    if (config.mode !== 'dryrun') {
+      promiseChain = promiseChain.then(() => new Promise((resolve, reject) => {
+        slackWebClient.users.list({ presence: false }, (error, res) => {
+          if (error) {
+            console.log('error', res); // eslint-disable-line no-console
+            reject(error);
+          } else {
+            slackUtils.slackUsers = res.members;
+            resolve(res.members);
+          }
+        });
+      }));
+    }
+
     followup.slack.forEach((slack) => {
-      promiseChain = promiseChain.then(slackIssue(slack, issue, changelog, webhookEvent));
+      promiseChain = promiseChain.then(() => slackIssue(slack, issue, changelog, webhookEvent));
     });
   }
 
@@ -273,6 +288,29 @@ exports.onReceive = (event, context, callback) => {
 if (require.main === module) {
   const jiraHooks = [
     {
+      issue: {
+        key: 'FLEX-1337',
+        fields: {
+          project: { key: 'FLEX' },
+          // priority: { name: 'Major' },
+          // status: { name: 'Resolved' },
+          resolution: { name: 'Fixed' },
+          assignee: { name: 'eleith', emailAddress: 'eleith@coursera.org' },
+          // duedate: '2018-11-20',
+          issuetype: { name: 'Bug' },
+          components: [],
+        },
+      },
+      changelog: {
+        items: [{
+          field: 'resolution',
+          fromString: null,
+          toString: 'Fixed',
+        },
+        ],
+      },
+      type: 'issue_resolved',
+      /*
       issue: {
         key: 'PROJECT-1337',
         fields: {
@@ -299,6 +337,7 @@ if (require.main === module) {
         ],
       },
       type: 'issue_created',
+      */
     },
   ];
 
