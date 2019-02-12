@@ -1,0 +1,29 @@
+{
+  "name": "ep-bot",
+  "version": "0.0.1",
+  "description": "Bot that anonymizes feedback and posts to channel",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:coursera/emscripts.git"
+  },
+  "dependencies": {
+    "@slack/client": "^4.8.0",
+    "moment": "^2.24.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.13.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.16.0"
+  },
+  "author": "priyankc",
+  "license": "Apache-2.0",
+  "config": {
+    "function_name": "EPBot",
+    "aws_region": "us-east-1"
+  },
+  "scripts": {
+    "zip": "rm $npm_package_config_function_name.zip; zip -r $npm_package_config_function_name.zip .",
+    "deploy": "aws lambda update-function-code --region $npm_package_config_aws_region --function-name $npm_package_config_function_name --zip-file fileb://$npm_package_config_function_name.zip"
+  }
+}
